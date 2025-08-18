@@ -1,0 +1,30 @@
+TCGV Game Deployment Package
+============================
+
+Created: Mon Aug 18 15:58:36 +08 2025
+Version: 5.0
+
+Deployment Instructions:
+1. Upload the 'server' folder to your hosting provider
+2. Run 'npm install --production' in the server directory
+3. Start the server with 'npm start' or 'pm2 start server.js'
+
+Files included:
+- Server: Node.js Express + Socket.IO server
+- Client: Built React application (minified)
+
+Game Features:
+- Real-time multiplayer gameplay
+- Monster spawning and combat
+- Sword and gun systems
+- Voice chat capabilities
+- Player progression system
+- Admin panel
+
+Requirements:
+- Node.js 14+ 
+- npm
+- WebSocket support
+- Port 3001 (or configure in server.js)
+
+For detailed instructions, see DEPLOYMENT.md

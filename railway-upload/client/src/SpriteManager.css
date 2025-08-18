@@ -1,0 +1,117 @@
+.sprite-container {
+  position: relative !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible; /* Changed from hidden to prevent cropping */
+  width: 100px !important;
+  height: 100px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin-left: 18px !important; /* Reduced from 25px to move 7px left */
+}
+
+.sprite {
+  image-rendering: pixelated; /* For crisp pixel art */
+  background-repeat: no-repeat;
+  position: absolute;
+  transform-origin: center;
+  width: 99px !important;
+  height: 99px !important;
+  background-color: transparent !important;
+}
+
+/* Additional styling for sprite overlays like name tags */
+.sprite-overlay {
+  position: absolute;
+  top: -20px;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 12px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Container for player with sprite */
+.player-with-sprite {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center horizontally */
+  justify-content: center; /* Center vertically */
+  user-select: none;
+  z-index: 1;
+  transition: none !important; /* Ensure no transition delay */
+  width: 100px;  /* Fixed width to match sprite container */
+  height: 100px; /* Fixed height to match sprite container */
+  background: transparent !important;
+  border: none !important;
+  /* Center the player around its position point, shifted 50px to the right */
+  transform: translate(0px, -50px);
+}
+
+/* Style for the player name to ensure it's centered */
+.player-with-sprite .player-name {
+  position: absolute;
+  top: -18px; /* Position it right above the sprite with no gap */
+  left: 0;
+  right: 0;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 0 4px #000, 0 0 2px #000;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  z-index: 5; /* Ensure player name is above sprite but below chat bubbles */
+  line-height: 1;
+}
+
+/* Reset any conflicting styles from App.css */
+.player-name {
+  position: absolute !important;
+  top: -18px !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  text-align: center !important;
+  transform: none !important;
+  /* Additional overrides to ensure consistency */
+  display: block !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.player-with-sprite.my-player {
+  z-index: 10; /* Ensure current player is above others */
+  cursor: grab;
+  background: transparent !important;
+}
+
+.player-with-sprite.other-player {
+  z-index: 5;
+  background: transparent !important;
+}
+
+/* Shadow beneath the sprite */
+.sprite-shadow {
+  position: absolute;
+  bottom: 5px; /* Position at bottom of container with small gap */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  filter: blur(2px);
+  z-index: -1;
+} 

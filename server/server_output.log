@@ -1,0 +1,25 @@
+Server running on port 3001
+User connected: h0iTmwKFnXqrPwuKAAAC
+Player joining room: {
+  name: '123',
+  roomId: '112233',
+  role: 'roleA',
+  bubbleColor: '#9b2c2c',
+  spriteId: 'character1'
+}
+Creating new room: 112233
+Player h0iTmwKFnXqrPwuKAAAC (123) joined room 112233
+Room now has 1 players
+Current room state:
+ - h0iTmwKFnXqrPwuKAAAC: 123, position: { x: 50, y: 100 }
+Sending 1 player info to new player h0iTmwKFnXqrPwuKAAAC
+Background settings for room 112233: undefined
+Sent room joined data to h0iTmwKFnXqrPwuKAAAC with background: NO
+All players in server:
+ - h0iTmwKFnXqrPwuKAAAC: 123, room: 112233, position: { x: 50, y: 100 }
+Player h0iTmwKFnXqrPwuKAAAC requested current positions in room 112233
+Player h0iTmwKFnXqrPwuKAAAC (123) joined voice chat in room 112233
+Player h0iTmwKFnXqrPwuKAAAC (123) joined voice chat in room 112233
+Player h0iTmwKFnXqrPwuKAAAC (123) left voice chat in room 112233
+Player disconnected: h0iTmwKFnXqrPwuKAAAC
+Removing empty room: 112233

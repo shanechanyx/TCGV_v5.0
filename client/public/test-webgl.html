@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGL Test</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { width: 100%; height: 100%; position: fixed; top: 0; left: 0; }
+    </style>
+</head>
+<body>
+    <canvas id="webgl-test"></canvas>
+    <div style="position: fixed; top: 10px; left: 10px; color: white; font-family: Arial; z-index: 100;">
+        <h2>WebGL Test</h2>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusElement = document.getElementById('status');
+            const canvas = document.getElementById('webgl-test');
+            
+            try {
+                // Try to get WebGL2 context first (preferred)
+                let gl = canvas.getContext('webgl2');
+                let version = 2;
+                
+                // Fall back to WebGL1 if WebGL2 is not available
+                if (!gl) {
+                    gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    version = 1;
+                }
+                
+                if (!gl) {
+                    statusElement.innerHTML = 'WebGL NOT supported in this browser!';
+                    statusElement.style.color = 'red';
+                    return;
+                }
+                
+                // Successfully got a WebGL context
+                statusElement.innerHTML = `✓ WebGL ${version} is working!<br>` +
+                    `Renderer: ${gl.getParameter(gl.RENDERER)}<br>` +
+                    `Vendor: ${gl.getParameter(gl.VENDOR)}<br>` +
+                    `WebGL Version: ${gl.getParameter(gl.VERSION)}<br>` + 
+                    `Shading Language: ${gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}`;
+                statusElement.style.color = 'lime';
+                
+                // Set up a simple animation to test rendering
+                gl.clearColor(0.0, 0.0, 0.1, 1.0);
+                
+                // Create a simple shader program
+                const vertexShaderSource = `
+                    attribute vec4 aVertexPosition;
+                    uniform float uTime;
+                    void main() {
+                        vec4 pos = aVertexPosition;
+                        pos.x += sin(uTime + pos.y * 2.0) * 0.1;
+                        gl_Position = pos;
+                    }
+                `;
+                
+                const fragmentShaderSource = `
+                    precision mediump float;
+                    uniform float uTime;
+                    void main() {
+                        gl_FragColor = vec4(
+                            sin(uTime) * 0.5 + 0.5, 
+                            cos(uTime) * 0.5 + 0.5, 
+                            sin(uTime + 3.14) * 0.5 + 0.5,
+                            1.0);
+                    }
+                `;
+                
+                // Compile shaders
+                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vertexShader, vertexShaderSource);
+                gl.compileShader(vertexShader);
+                
+                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fragmentShader, fragmentShaderSource);
+                gl.compileShader(fragmentShader);
+                
+                // Create program
+                const program = gl.createProgram();
+                gl.attachShader(program, vertexShader);
+                gl.attachShader(program, fragmentShader);
+                gl.linkProgram(program);
+                
+                // Check if shaders compiled successfully
+                if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+                    statusElement.innerHTML += '<br>Vertex shader compilation failed: ' + 
+                        gl.getShaderInfoLog(vertexShader);
+                    return;
+                }
+                
+                if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+                    statusElement.innerHTML += '<br>Fragment shader compilation failed: ' + 
+                        gl.getShaderInfoLog(fragmentShader);
+                    return;
+                }
+                
+                // Check if program linked successfully
+                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                    statusElement.innerHTML += '<br>Shader program linking failed: ' + 
+                        gl.getProgramInfoLog(program);
+                    return;
+                }
+                
+                // Set up position buffer
+                const positionBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                
+                // Triangle coordinates
+                const positions = [
+                    -0.7, -0.7,
+                    0.7, -0.7,
+                    0.0, 0.7
+                ];
+                
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+                
+                // Get attribute and uniform locations
+                const aVertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
+                const uTime = gl.getUniformLocation(program, 'uTime');
+                
+                // Enable attribute
+                gl.enableVertexAttribArray(aVertexPosition);
+                
+                // Set up viewport
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                
+                // Animation loop
+                let startTime = Date.now();
+                function render() {
+                    // Resize canvas to full window
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    gl.viewport(0, 0, canvas.width, canvas.height);
+                    
+                    // Clear canvas
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+                    
+                    // Use shader program
+                    gl.useProgram(program);
+                    
+                    // Set time uniform
+                    const currentTime = (Date.now() - startTime) / 1000.0;
+                    gl.uniform1f(uTime, currentTime);
+                    
+                    // Bind position buffer
+                    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                    gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+                    
+                    // Draw triangle
+                    gl.drawArrays(gl.TRIANGLES, 0, 3);
+                    
+                    requestAnimationFrame(render);
+                }
+                
+                render();
+                
+                statusElement.innerHTML += '<br>✓ Animation is running!';
+                
+            } catch (e) {
+                statusElement.innerHTML = `ERROR: ${e.message}`;
+                statusElement.style.color = 'red';
+                console.error(e);
+            }
+        });
+    </script>
+</body>
+</html> 

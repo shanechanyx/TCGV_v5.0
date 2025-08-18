@@ -1,0 +1,91 @@
+.sprite-container {
+  position: relative;
+  overflow: visible; /* Changed from hidden to prevent cropping */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px !important;
+  height: 100px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.sprite {
+  image-rendering: pixelated; /* For crisp pixel art */
+  background-repeat: no-repeat;
+  position: absolute;
+  transform-origin: center;
+  width: 99px !important;
+  height: 99px !important;
+  background-color: transparent !important;
+}
+
+/* Additional styling for sprite overlays like name tags */
+.sprite-overlay {
+  position: absolute;
+  top: -20px;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 12px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Container for player with sprite */
+.player-with-sprite {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+  z-index: 1;
+  transition: none !important; /* Ensure no transition delay */
+  width: 100px;  /* Increased width to match sprite container */
+  height: 100px; /* Increased height to match sprite container */
+  background: transparent !important;
+  border: none !important;
+}
+
+.player-with-sprite .player-name {
+  position: absolute;
+  top: -25px; /* Position above the sprite */
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 0 4px #000, 0 0 2px #000;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  z-index: 5; /* Ensure player name is above sprite but below chat bubbles */
+}
+
+.player-with-sprite.my-player {
+  z-index: 10; /* Ensure current player is above others */
+  cursor: grab;
+  background: transparent !important;
+}
+
+.player-with-sprite.other-player {
+  z-index: 5;
+  background: transparent !important;
+}
+
+/* Shadow beneath the sprite */
+.sprite-shadow {
+  position: absolute;
+  bottom: 5px; /* Position at bottom of container with small gap */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  filter: blur(2px);
+  z-index: -1;
+} 
