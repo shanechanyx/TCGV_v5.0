@@ -1,0 +1,30 @@
+{
+  "name": "tcgv-v5-0",
+  "version": "5.0.0",
+  "description": "Multiplayer TCGV Game - Real-time combat with monsters, guns, and swords",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "cd server && npm start",
+    "build": "cd client && npm install && npm run build",
+    "install-deps": "cd client && npm install && cd ../server && npm install",
+    "dev": "concurrently \"cd server && npm start\" \"cd client && npm start\""
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shanechanyx/TCGV_v5.0.git"
+  },
+  "keywords": [
+    "game",
+    "multiplayer",
+    "real-time",
+    "socket.io",
+    "react",
+    "node.js"
+  ],
+  "author": "shanechanyx",
+  "license": "MIT"
+} 
