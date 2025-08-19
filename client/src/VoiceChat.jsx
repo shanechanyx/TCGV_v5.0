@@ -249,7 +249,13 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
           }));
           
           // Try applying the signal again
-          newPeer.signal(signal);
+          setTimeout(() => {
+            try {
+              newPeer.signal(signal);
+            } catch (retryErr) {
+              console.error(`[AUDIO] Failed to apply signal after peer recreation:`, retryErr);
+            }
+          }, 100);
         }
       } catch (recreateErr) {
         console.error(`[AUDIO] Failed to recreate peer for ${userId}:`, recreateErr);
@@ -281,7 +287,18 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
           { urls: 'stun:stun3.l.google.com:19302' },
           { urls: 'stun:stun4.l.google.com:19302' },
           { urls: 'stun:openrelay.metered.ca:80' },
-          { urls: 'stun:stun.stunprotocol.org:3478' }
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          // Add TURN servers for better connectivity
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
         ]
       },
       sdpTransform: (sdp) => {
@@ -331,6 +348,12 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
       console.log(`[AUDIO] Received audio stream from ${userId} with ${remoteStream.getAudioTracks().length} audio tracks`);
       
       try {
+        // Remove any existing audio element for this user
+        const existingAudio = document.getElementById(`audio-${userId}`);
+        if (existingAudio) {
+          existingAudio.remove();
+        }
+        
         // METHOD 1: HTML Audio Element (most reliable)
         const audio = new Audio();
         audio.srcObject = remoteStream;
@@ -338,28 +361,73 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
         audio.muted = false; // VERY IMPORTANT: ensure it's not muted
         audio.volume = 1.0;  // Set volume to maximum
         audio.id = `audio-${userId}`;
-        document.body.appendChild(audio);
+        
+        // Add event listeners for debugging
+        audio.onloadedmetadata = () => {
+          console.log(`[AUDIO] Audio metadata loaded for ${userId}`);
+        };
+        
+        audio.oncanplay = () => {
+          console.log(`[AUDIO] Audio can play for ${userId}`);
+        };
+        
+        audio.onerror = (e) => {
+          console.error(`[AUDIO] Audio error for ${userId}:`, e);
+        };
+        
+        // Add to a visible container for debugging
+        const audioContainer = document.getElementById('remote-audio-container') || document.body;
+        audioContainer.appendChild(audio);
         console.log(`[AUDIO] Created audio element for ${userId}`);
         
         // Force play with explicit user action if needed 
-        audio.play()
-          .then(() => console.log(`[AUDIO] Successfully playing audio from ${userId}`))
-          .catch(err => {
-            console.error(`[AUDIO] Autoplay failed:`, err);
+        const playAudio = async () => {
+          try {
+            await audio.play();
+            console.log(`[AUDIO] Successfully playing audio from ${userId}`);
+          } catch (err) {
+            console.error(`[AUDIO] Autoplay failed for ${userId}:`, err);
             
             // Add a visible button for user to click (browsers require user interaction)
             const button = document.createElement('button');
-            button.textContent = 'Enable Voice Chat Audio';
+            button.textContent = `Enable Audio from ${userId}`;
             button.className = 'audio-enable-button';
-            button.onclick = () => {
-              // On click, try again to play audio
-              audio.play().catch(console.error);
-              button.remove();
+            button.style.cssText = `
+              position: fixed;
+              top: 10px;
+              right: 10px;
+              z-index: 10000;
+              background: #ff4444;
+              color: white;
+              border: none;
+              padding: 10px;
+              border-radius: 5px;
+              cursor: pointer;
+            `;
+            button.onclick = async () => {
+              try {
+                await audio.play();
+                console.log(`[AUDIO] Successfully playing audio from ${userId} after user interaction`);
+                button.remove();
+              } catch (playErr) {
+                console.error(`[AUDIO] Still failed to play after user interaction:`, playErr);
+              }
             };
             document.body.appendChild(button);
-          });
+            
+            // Auto-remove button after 10 seconds
+            setTimeout(() => {
+              if (button.parentNode) {
+                button.remove();
+              }
+            }, 10000);
+          }
+        };
         
-        // METHOD 2: Direct Audio Output through AudioContext
+        // Try to play immediately
+        playAudio();
+        
+        // METHOD 2: Direct Audio Output through AudioContext (backup method)
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -369,10 +437,14 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
           audioContextRef.current.resume();
         }
         
-        // Connect the remote stream to audio output
-        const source = audioContextRef.current.createMediaStreamSource(remoteStream);
-        source.connect(audioContextRef.current.destination);
-        console.log(`[AUDIO] Connected ${userId}'s stream directly to audio output`);
+        // Connect the remote stream to audio output as backup
+        try {
+          const source = audioContextRef.current.createMediaStreamSource(remoteStream);
+          source.connect(audioContextRef.current.destination);
+          console.log(`[AUDIO] Connected ${userId}'s stream directly to audio output as backup`);
+        } catch (audioContextErr) {
+          console.warn(`[AUDIO] Could not connect ${userId}'s stream to AudioContext:`, audioContextErr);
+        }
       } catch (err) {
         console.error(`[AUDIO] Error setting up audio for ${userId}:`, err);
       }
@@ -763,12 +835,28 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
           muted: el.muted,
           volume: el.volume,
           paused: el.paused,
-          tracks: el.srcObject?.getTracks().length || 0
+          tracks: el.srcObject?.getTracks().length || 0,
+          readyState: el.readyState,
+          networkState: el.networkState,
+          currentTime: el.currentTime,
+          duration: el.duration
         });
       });
       
       // Check if WebRTC peer connections exist
       console.log('Current peer connections:', Object.keys(myPeers.current));
+      
+      // Log detailed peer connection info
+      Object.entries(myPeers.current).forEach(([userId, peer]) => {
+        console.log(`Peer ${userId}:`, {
+          connected: peer.connected,
+          destroyed: peer.destroyed,
+          iceConnectionState: peer.iceConnectionState,
+          connectionState: peer.connectionState,
+          hasStream: !!peer.stream,
+          hasRemoteStream: !!peer.remoteStream
+        });
+      });
       
       // Log audio context state
       console.log('AudioContext state:', audioContextRef.current?.state);
@@ -782,6 +870,19 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
         });
       }
       
+      // Check microphone stream
+      if (audioStream) {
+        console.log('Microphone stream:', {
+          active: audioStream.active,
+          tracks: audioStream.getTracks().map(track => ({
+            kind: track.kind,
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState
+          }))
+        });
+      }
+      
       // Create and display audio status
       const existingStatus = document.getElementById('audio-debug-status');
       if (existingStatus) {
@@ -791,18 +892,62 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
       const statusDiv = document.createElement('div');
       statusDiv.id = 'audio-debug-status';
       statusDiv.className = 'audio-debug-status';
+      statusDiv.style.cssText = `
+        position: fixed;
+        top: 50px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        max-width: 300px;
+        font-family: monospace;
+        font-size: 12px;
+      `;
+      
+      const peerInfo = Object.entries(myPeers.current).map(([userId, peer]) => 
+        `${userId}: ${peer.connected ? 'Connected' : 'Disconnected'} (ICE: ${peer.iceConnectionState})`
+      ).join('<br>');
+      
+      const audioInfo = Array.from(audioElements).map((el, i) => 
+        `${el.id || `audio-${i}`}: ${el.paused ? 'Paused' : 'Playing'} (Vol: ${el.volume})`
+      ).join('<br>');
+      
       statusDiv.innerHTML = `
-        <h3>Voice Chat Status</h3>
-        <p>Audio connections: ${Object.keys(myPeers.current).length}</p>
-        <p>Audio elements: ${audioElements.length}</p>
-        <p>AudioContext: ${audioContextRef.current?.state || 'none'}</p>
-        <p>Microphone: ${audioStream ? 'Connected' : 'Not connected'}</p>
-        <button id="debug-close">Close</button>
+        <h3>Voice Chat Debug</h3>
+        <p><strong>Audio Elements:</strong> ${audioElements.length}</p>
+        <p><strong>Peer Connections:</strong> ${Object.keys(myPeers.current).length}</p>
+        <p><strong>AudioContext:</strong> ${audioContextRef.current?.state || 'none'}</p>
+        <p><strong>Microphone:</strong> ${audioStream ? 'Connected' : 'Not connected'}</p>
+        <hr>
+        <p><strong>Peers:</strong><br>${peerInfo || 'None'}</p>
+        <hr>
+        <p><strong>Audio Elements:</strong><br>${audioInfo || 'None'}</p>
+        <button id="debug-close" style="margin-top: 10px; padding: 5px 10px;">Close</button>
+        <button id="debug-refresh" style="margin-top: 10px; margin-left: 10px; padding: 5px 10px;">Refresh</button>
+        <button id="debug-reconnect" style="margin-top: 10px; margin-left: 10px; padding: 5px 10px; background: #ff4444; color: white; border: none; border-radius: 3px;">Force Reconnect</button>
       `;
       document.body.appendChild(statusDiv);
       
       document.getElementById('debug-close').onclick = () => {
         statusDiv.remove();
+      };
+      
+      document.getElementById('debug-refresh').onclick = () => {
+        statusDiv.remove();
+        setTimeout(debugAudio, 100);
+      };
+      
+      document.getElementById('debug-reconnect').onclick = () => {
+        if (window.forceReconnectPeers) {
+          window.forceReconnectPeers();
+          statusDiv.remove();
+          setTimeout(() => {
+            alert('Peers reconnected! Check the debug panel again.');
+            debugAudio();
+          }, 2000);
+        }
       };
     } catch (err) {
       console.error('Error in debug audio:', err);
@@ -839,6 +984,37 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
       cleanupVoiceChat();
     };
     
+    // Add function to force reconnect peers
+    window.forceReconnectPeers = () => {
+      console.log("Force reconnecting all peers");
+      Object.entries(myPeers.current).forEach(([userId, peer]) => {
+        if (peer && !peer.destroyed) {
+          console.log(`Force reconnecting peer ${userId}`);
+          peer.destroy();
+          delete myPeers.current[userId];
+          
+          // Remove from UI state
+          setPeers(prev => {
+            const newPeers = { ...prev };
+            delete newPeers[userId];
+            return newPeers;
+          });
+          
+          // Create new peer connection
+          setTimeout(() => {
+            const newPeer = createPeer(userId, true);
+            if (newPeer) {
+              myPeers.current[userId] = newPeer;
+              setPeers(prev => ({
+                ...prev,
+                [userId]: newPeer
+              }));
+            }
+          }, 1000);
+        }
+      });
+    };
+    
     // Add listeners for common user interactions
     document.addEventListener('click', resumeAudioContext);
     document.addEventListener('touchstart', resumeAudioContext);
@@ -861,6 +1037,7 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
       delete window.showVoiceChatModal;
       delete window.joinVoiceChat;
       delete window.cleanupVoiceChat;
+      delete window.forceReconnectPeers;
     };
   }, []);
   
