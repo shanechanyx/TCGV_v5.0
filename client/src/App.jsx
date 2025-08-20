@@ -3453,19 +3453,20 @@ function App() {
                     <div className="monster-hp-text">{monster.hp}/{monster.maxHp} HP</div>
                   </div>
                   
-                  {/* Monster sprite (simple colored square for now) */}
+                  {/* Monster sprite using actual image */}
                   <div 
                     className="monster-sprite"
                     style={{
-                      backgroundColor: monster.color,
                       width: '60px',
                       height: '60px',
                       borderRadius: '8px',
-                      border: '3px solid #333'
+                      border: '3px solid #333',
+                      backgroundImage: `url('/assets/characters/${monster.id}.png')`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat'
                     }}
-                  >
-                    {monster.name.charAt(0).toUpperCase()}
-                  </div>
+                  />
                   
                   {/* Attack range indicator */}
                   {isInRange && (
