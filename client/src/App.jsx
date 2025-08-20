@@ -82,6 +82,8 @@ function App() {
   const [pvpStatuses, setPvpStatuses] = useState({}); // Track PVP status for all players
   const [myPvpStatus, setMyPvpStatus] = useState(false); // Track my own PVP status
   const [pvpTarget, setPvpTarget] = useState(null); // Track current PVP target
+  const [isDead, setIsDead] = useState(false); // Track if player is dead
+  const [showRevivalPopup, setShowRevivalPopup] = useState(false); // Show revival popup
   const [showProximityPrompt, setShowProximityPrompt] = useState(false); // Show interaction prompt
   const [showInteractionMenu, setShowInteractionMenu] = useState(false); // Show interaction menu
   const [selectedPlayer, setSelectedPlayer] = useState(null); // Selected player for interaction
@@ -1594,6 +1596,22 @@ function App() {
       console.log('PVP attack:', data);
       addCombatMessage(`${data.attackerName} attacked ${data.targetName} for ${data.damage} damage!`, 'pvp');
       
+      // If we are the target, update our HP
+      if (data.targetId === socket.id) {
+        const newHP = Math.max(0, playerStats.hp - data.damage);
+        setPlayerStats(prev => ({
+          ...prev,
+          hp: newHP
+        }));
+        
+        // Check if we died
+        if (newHP <= 0) {
+          setIsDead(true);
+          setShowRevivalPopup(true);
+          addCombatMessage('You have been killed! Click to revive.', 'death');
+        }
+      }
+      
       // Play appropriate sound effect
       if (data.weaponType === 'sword') {
         audioManager.playSwordSwing();
@@ -1618,6 +1636,28 @@ function App() {
     socket.on('playerStatsUpdated', (stats) => {
       console.log('Player stats updated:', stats);
       setPlayerStats(stats);
+    });
+
+    socket.on('playerRevived', (data) => {
+      console.log('Player revived:', data);
+      
+      // If it's us, update our position and stats
+      if (data.playerId === socket.id) {
+        setPlayerPositions(prev => ({
+          ...prev,
+          [socket.id]: data.newPosition
+        }));
+        
+        setPlayerStats(prev => ({
+          ...prev,
+          hp: data.newHp
+        }));
+        
+        setIsDead(false);
+        setShowRevivalPopup(false);
+      }
+      
+      addCombatMessage(`${data.playerName} has been revived!`, 'revival');
     });
     
     return () => {
@@ -1644,6 +1684,7 @@ function App() {
       socket.off('pvpAttack');
       socket.off('pvpKill');
       socket.off('playerStatsUpdated');
+      socket.off('playerRevived');
     };
   }, [socket]);
 
@@ -2003,6 +2044,26 @@ function App() {
     }, 300);
   };
   
+  // Revival function
+  const handleRevival = () => {
+    if (!socket || !inRoom) return;
+    
+    // Reset HP to full
+    setPlayerStats(prev => ({
+      ...prev,
+      hp: prev.maxHp
+    }));
+    
+    // Reset death state
+    setIsDead(false);
+    setShowRevivalPopup(false);
+    
+    // Emit revival event to server
+    socket.emit('playerRevived');
+    
+    addCombatMessage('You have been revived!', 'revival');
+  };
+
   // Universal gun shot that hits everything in range
   const performGunShot = () => {
     if (!socket || !inRoom) return;
@@ -3983,6 +4044,41 @@ function App() {
 
       {/* Remove the standalone menu since it's now part of the player element */}
       
+      {/* Revival Popup */}
+      {showRevivalPopup && isDead && (
+        <div className="revival-popup-overlay">
+          <div className="revival-popup">
+            <div className="revival-content">
+              <h2>💀 You Have Died!</h2>
+              <p>Your HP has reached 0. Click the button below to revive.</p>
+              <div className="revival-stats">
+                <p><strong>Current HP:</strong> {playerStats.hp}/{playerStats.maxHp}</p>
+              </div>
+              <button 
+                className="revival-button"
+                onClick={handleRevival}
+                style={{
+                  background: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  padding: '15px 30px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => e.target.style.background = '#45a049'}
+                onMouseOut={(e) => e.target.style.background = '#4CAF50'}
+              >
+                🔄 Revive Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Admin Panel */}
       {console.log('Rendering AdminPanel:', { showAdminPanel, isAdmin })}
       <AdminPanel 

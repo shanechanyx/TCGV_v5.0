@@ -2471,9 +2471,9 @@ io.on('connection', (socket) => {
     if (targetStats.hp <= 0) {
       console.log(`PVP Kill: ${attacker.name} killed ${target.name}`);
       
-      // Respawn target
-      targetStats.hp = targetStats.maxHp;
-      target.position = { x: 50, y: 100 }; // Respawn position
+      // Don't auto-respawn - let player click to revive
+      // targetStats.hp = targetStats.maxHp;
+      // target.position = { x: 50, y: 100 }; // Respawn position
       
       io.to(attacker.room).emit('pvpKill', {
         killerId: socket.id,
@@ -2540,9 +2540,9 @@ io.on('connection', (socket) => {
     if (targetStats.hp <= 0) {
       console.log(`PVP Kill: ${attacker.name} killed ${target.name}`);
       
-      // Respawn target
-      targetStats.hp = targetStats.maxHp;
-      target.position = { x: 50, y: 100 }; // Respawn position
+      // Don't auto-respawn - let player click to revive
+      // targetStats.hp = targetStats.maxHp;
+      // target.position = { x: 50, y: 100 }; // Respawn position
       
       io.to(attacker.room).emit('pvpKill', {
         killerId: socket.id,
@@ -2555,6 +2555,43 @@ io.on('connection', (socket) => {
     
     // Update target's stats
     io.to(targetId).emit('playerStatsUpdated', targetStats);
+  });
+
+  // Handle player revival
+  socket.on('playerRevived', () => {
+    console.log('Received playerRevived event from socket:', socket.id);
+    
+    const player = players.get(socket.id);
+    if (!player || !player.room) {
+      console.log('Player not found or not in room:', { player: !!player, room: player?.room });
+      socket.emit('error', 'Player not in a room');
+      return;
+    }
+    
+    const playerStat = playerStats.get(socket.id);
+    if (playerStat) {
+      // Reset HP to full
+      playerStat.hp = playerStat.maxHp;
+      
+      // Respawn player at a safe position
+      player.position = { x: 50, y: 100 };
+      
+      console.log(`Player ${player.name} (${socket.id}) has been revived`);
+      
+      // Broadcast revival to all players in the room
+      io.to(player.room).emit('playerRevived', {
+        playerId: socket.id,
+        playerName: player.name,
+        newPosition: player.position,
+        newHp: playerStat.hp
+      });
+      
+      // Update player position for all clients
+      io.to(player.room).emit('playerMoved', {
+        playerId: socket.id,
+        position: player.position
+      });
+    }
   });
 
   // Debug: list all rooms
