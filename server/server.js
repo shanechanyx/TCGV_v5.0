@@ -2421,6 +2421,10 @@ io.on('connection', (socket) => {
   
   // Handle PVP sword attack
   socket.on('pvpSwordAttack', (data) => {
+    console.log('=== PVP SWORD ATTACK RECEIVED ===');
+    console.log('Data received:', data);
+    console.log('Attacker socket ID:', socket.id);
+    
     const attacker = players.get(socket.id);
     const targetId = data.targetId;
     const target = players.get(targetId);
@@ -2490,6 +2494,10 @@ io.on('connection', (socket) => {
   
   // Handle PVP gun attack
   socket.on('pvpGunAttack', (data) => {
+    console.log('=== PVP GUN ATTACK RECEIVED ===');
+    console.log('Data received:', data);
+    console.log('Attacker socket ID:', socket.id);
+    
     const attacker = players.get(socket.id);
     const targetId = data.targetId;
     const target = players.get(targetId);

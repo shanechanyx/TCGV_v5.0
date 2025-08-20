@@ -2026,6 +2026,7 @@ function App() {
         attackMonster(target.id);
       } else if (target.type === 'player') {
         console.log(`Attacking PVP player ${target.id}`);
+        console.log('Emitting pvpSwordAttack event with targetId:', target.id);
         socket.emit('pvpSwordAttack', { targetId: target.id });
         addCombatMessage(`Sword hit player!`, 'pvp');
       }
@@ -2119,6 +2120,7 @@ function App() {
         });
       } else if (target.type === 'player') {
         console.log(`Shooting PVP player ${target.id}`);
+        console.log('Emitting pvpGunAttack event with targetId:', target.id);
         socket.emit('pvpGunAttack', { targetId: target.id });
         addCombatMessage(`Gun shot hit player!`, 'pvp');
       }
