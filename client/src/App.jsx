@@ -77,6 +77,11 @@ function App() {
   const [talkingPlayers, setTalkingPlayers] = useState({}); // Track players currently talking
   const [gameBackground, setGameBackground] = useState('default');
   const [nearbyPlayers, setNearbyPlayers] = useState([]); // Track players in proximity
+  
+  // PVP system state
+  const [pvpStatuses, setPvpStatuses] = useState({}); // Track PVP status for all players
+  const [myPvpStatus, setMyPvpStatus] = useState(false); // Track my own PVP status
+  const [pvpTarget, setPvpTarget] = useState(null); // Track current PVP target
   const [showProximityPrompt, setShowProximityPrompt] = useState(false); // Show interaction prompt
   const [showInteractionMenu, setShowInteractionMenu] = useState(false); // Show interaction menu
   const [selectedPlayer, setSelectedPlayer] = useState(null); // Selected player for interaction
@@ -1271,6 +1276,13 @@ function App() {
         setPlayerGun(data.playerGunInventory);
       }
       
+      // Initialize PVP statuses if available
+      if (data.pvpStatuses) {
+        console.log('PVP statuses:', data.pvpStatuses);
+        setPvpStatuses(data.pvpStatuses);
+        setMyPvpStatus(data.pvpStatuses[socket.id] || false);
+      }
+      
       // Apply background settings if available
       if (data.backgroundSettings) {
         console.log('🔴 RECEIVED BACKGROUND ON ROOM JOIN:', 
@@ -1553,6 +1565,58 @@ function App() {
       addCombatMessage(message, 'warning');
     });
     
+    // PVP System Event Handlers
+    
+    socket.on('pvpStatusChanged', (data) => {
+      console.log('PVP status changed:', data);
+      setPvpStatuses(prev => ({
+        ...prev,
+        [data.playerId]: data.isPVP
+      }));
+      
+      if (data.playerId === socket.id) {
+        setMyPvpStatus(data.isPVP);
+      }
+      
+      addCombatMessage(`${data.playerName} ${data.isPVP ? 'enabled' : 'disabled'} PVP mode!`, 'pvp');
+    });
+    
+    socket.on('pvpStatusUpdated', (data) => {
+      console.log('My PVP status updated:', data);
+      setMyPvpStatus(data.isPVP);
+      addCombatMessage(data.message, 'pvp');
+    });
+    
+    socket.on('pvpAttack', (data) => {
+      console.log('PVP attack:', data);
+      addCombatMessage(`${data.attackerName} attacked ${data.targetName} for ${data.damage} damage!`, 'pvp');
+      
+      // Play appropriate sound effect
+      if (data.weaponType === 'sword') {
+        audioManager.playSwordSwing();
+      } else if (data.weaponType === 'gun') {
+        audioManager.playPistolShot();
+      }
+    });
+    
+    socket.on('pvpKill', (data) => {
+      console.log('PVP kill:', data);
+      addCombatMessage(`${data.killerName} killed ${data.victimName}!`, 'pvp');
+      
+      // Update victim's position if it's us
+      if (data.victimId === socket.id) {
+        setPlayerPositions(prev => ({
+          ...prev,
+          [socket.id]: data.respawnPosition
+        }));
+      }
+    });
+    
+    socket.on('playerStatsUpdated', (stats) => {
+      console.log('Player stats updated:', stats);
+      setPlayerStats(stats);
+    });
+    
     return () => {
       socket.off('roomJoined', handleRoomJoined);
       socket.off('initialPositions', handleInitialPositions);
@@ -1572,6 +1636,11 @@ function App() {
       socket.off('gunShot');
       socket.off('projectileHit');
       socket.off('shootError');
+      socket.off('pvpStatusChanged');
+      socket.off('pvpStatusUpdated');
+      socket.off('pvpAttack');
+      socket.off('pvpKill');
+      socket.off('playerStatsUpdated');
     };
   }, [socket]);
 
@@ -1871,6 +1940,43 @@ function App() {
       socket.emit('stopMachineGunFiring');
       addCombatMessage('Stopped machine gun firing!', 'info');
     }
+  };
+  
+  // PVP System Functions
+  
+  const togglePVP = () => {
+    if (!socket || !inRoom) {
+      addCombatMessage('Cannot toggle PVP - not in a room!', 'warning');
+      return;
+    }
+    
+    socket.emit('togglePVP');
+    console.log('Toggling PVP mode');
+  };
+  
+  const attackPVPPlayer = (targetId, weaponType) => {
+    if (!socket || !inRoom) {
+      addCombatMessage('Cannot attack - not in a room!', 'warning');
+      return;
+    }
+    
+    if (!myPvpStatus) {
+      addCombatMessage('You must be in PVP mode to attack other players!', 'warning');
+      return;
+    }
+    
+    if (!pvpStatuses[targetId]) {
+      addCombatMessage('You can only attack players who are also in PVP mode!', 'warning');
+      return;
+    }
+    
+    if (weaponType === 'sword') {
+      socket.emit('pvpSwordAttack', { targetId });
+    } else if (weaponType === 'gun') {
+      socket.emit('pvpGunAttack', { targetId });
+    }
+    
+    console.log(`PVP attack: ${weaponType} attack on ${targetId}`);
   };
 
   // F key attack function
@@ -2311,6 +2417,14 @@ function App() {
           targetId: selectedPlayer.id,
           playerId: socket.id
         });
+        break;
+      case 'pvpSwordAttack':
+        console.log(`PVP Sword attack on ${selectedPlayer.name}`);
+        attackPVPPlayer(selectedPlayer.id, 'sword');
+        break;
+      case 'pvpGunAttack':
+        console.log(`PVP Gun attack on ${selectedPlayer.name}`);
+        attackPVPPlayer(selectedPlayer.id, 'gun');
         break;
       default:
         break;
@@ -3027,6 +3141,27 @@ function App() {
                     )}
                   </div>
                   
+                  {/* PVP indicator */}
+                  {pvpStatuses[player.id] && (
+                    <div 
+                      className="pvp-indicator"
+                      style={{
+                        position: 'absolute',
+                        top: '-25px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '20px',
+                        color: '#ff4444',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                        zIndex: 15,
+                        fontWeight: 'bold'
+                      }}
+                      title="PVP Mode Active"
+                    >
+                      💀
+                    </div>
+                  )}
+                  
                   {/* Interaction menu when this player is selected */}
                   {showInteractionMenu && selectedPlayer && selectedPlayer.id === player.id && (
                     <div className={`horizontal-menu ${menuFadeout ? 'fadeout' : ''}`}>
@@ -3063,6 +3198,31 @@ function App() {
                             <path d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z" />
                           </svg>
                         </button>
+                        
+                        {/* PVP Attack Options - only show if both players are in PVP mode */}
+                        {myPvpStatus && pvpStatuses[player.id] && (
+                          <>
+                            {/* Sword Attack */}
+                            <button 
+                              className="menu-option pvp-attack"
+                              onClick={(e) => handleInteraction('pvpSwordAttack', e)}
+                              title="Sword Attack"
+                              style={{ background: '#ff4444', color: 'white' }}
+                            >
+                              ⚔️
+                            </button>
+                            
+                            {/* Gun Attack */}
+                            <button 
+                              className="menu-option pvp-attack"
+                              onClick={(e) => handleInteraction('pvpGunAttack', e)}
+                              title="Gun Attack"
+                              style={{ background: '#ff4444', color: 'white' }}
+                            >
+                              🔫
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -3770,6 +3930,41 @@ function App() {
               onChange={(e) => audioManager.setSFXVolume(parseFloat(e.target.value))}
               style={{ width: '100px' }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* PVP Controls */}
+      {inRoom && (
+        <div className="pvp-controls" style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          padding: '10px',
+          borderRadius: '8px',
+          color: 'white',
+          fontSize: '12px',
+          zIndex: 1000
+        }}>
+          <div style={{ marginBottom: '5px' }}>
+            <button 
+              onClick={togglePVP}
+              style={{
+                background: myPvpStatus ? '#ff4444' : '#4CAF50',
+                border: 'none',
+                color: 'white',
+                padding: '8px 15px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              {myPvpStatus ? '💀 PVP ON' : '🛡️ PVP OFF'}
+            </button>
+          </div>
+          <div style={{ fontSize: '10px', opacity: 0.8 }}>
+            {myPvpStatus ? 'You can attack other PVP players' : 'You are safe from PVP attacks'}
           </div>
         </div>
       )}

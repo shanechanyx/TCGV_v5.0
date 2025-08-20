@@ -3447,6 +3447,12 @@
   color: #ffc107;
 }
 
+.log-pvp {
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+  font-weight: bold;
+}
+
 .log-death {
   background: rgba(158, 158, 158, 0.2);
   color: #9e9e9e;

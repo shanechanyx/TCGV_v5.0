@@ -46,6 +46,10 @@ const projectiles = new Map(); // Store active projectiles: roomId -> Map<projec
 const machineGunFiringStates = new Map(); // Track which players are continuously firing: playerId -> {isFiring: boolean, lastShot: timestamp}
 const machineGunTimers = new Map(); // Store continuous firing timers: playerId -> timer
 
+// PVP system data structures
+const playerPVPStatus = new Map(); // Track PVP status for each player: playerId -> {isPVP: boolean, timestamp: number}
+const pvpDamageCooldown = new Map(); // Track PVP damage cooldowns: playerId -> {lastDamageTime: timestamp}
+
 // Player profiles data store
 const playerProfiles = {};
 // Friendship data
@@ -79,6 +83,15 @@ const SWORD_CONFIG = {
     { id: 'iron_sword', name: 'Iron Sword', damage: 25, color: '#696969', rarity: 'uncommon' },
     { id: 'magic_sword', name: 'Magic Sword', damage: 40, color: '#9370DB', rarity: 'rare' }
   ]
+};
+
+// PVP configuration
+const PVP_CONFIG = {
+  damageCooldown: 2000, // 2 seconds between PVP damage
+  swordDamage: 25, // Sword damage to other players
+  gunDamage: 30, // Gun damage to other players
+  maxPVPDistance: 80, // Maximum distance for PVP attacks
+  pvpIndicator: '💀' // Red skull emoji for PVP indicator
 };
 
 // Gun configuration
@@ -1386,6 +1399,13 @@ io.on('connection', (socket) => {
     // Get player gun inventory
     const playerGunInventory = playerGunInventories.get(socket.id) || { hasGun: false, gunType: null, ammo: 0 };
     
+    // Get PVP status for all players in the room
+    const pvpStatuses = {};
+    roomPlayers.forEach(roomPlayer => {
+      const pvpStatus = playerPVPStatus.get(roomPlayer.id) || { isPVP: false, timestamp: 0 };
+      pvpStatuses[roomPlayer.id] = pvpStatus.isPVP;
+    });
+    
     // Send room info to player, including background settings if available
     socket.emit('roomJoined', {
       roomId: roomId,
@@ -1396,7 +1416,8 @@ io.on('connection', (socket) => {
       guns: currentGuns, // Send current guns
       playerStats: playerStat, // Send player stats
       playerInventory: playerInventory, // Send player inventory
-      playerGunInventory: playerGunInventory // Send player gun inventory
+      playerGunInventory: playerGunInventory, // Send player gun inventory
+      pvpStatuses: pvpStatuses // Send PVP statuses for all players
     });
     console.log(`Sent room joined data to ${socket.id} with background:`, backgroundSettings ? 'YES' : 'NO', 'monsters:', currentMonsters.length);
     
@@ -2355,6 +2376,220 @@ io.on('connection', (socket) => {
     
     // Clean up machine gun firing state
     stopMachineGunFiring(socket.id);
+    
+    // Clean up PVP status
+    playerPVPStatus.delete(socket.id);
+    pvpDamageCooldown.delete(socket.id);
+  });
+
+  // PVP System Event Handlers
+  
+  // Toggle PVP mode
+  socket.on('togglePVP', () => {
+    const player = players.get(socket.id);
+    if (!player || !player.room) {
+      socket.emit('error', 'Player not in a room');
+      return;
+    }
+    
+    const currentPVPStatus = playerPVPStatus.get(socket.id) || { isPVP: false, timestamp: 0 };
+    const newPVPStatus = !currentPVPStatus.isPVP;
+    
+    playerPVPStatus.set(socket.id, {
+      isPVP: newPVPStatus,
+      timestamp: Date.now()
+    });
+    
+    console.log(`Player ${player.name} (${socket.id}) ${newPVPStatus ? 'enabled' : 'disabled'} PVP mode`);
+    
+    // Broadcast PVP status change to all players in the room
+    io.to(player.room).emit('pvpStatusChanged', {
+      playerId: socket.id,
+      playerName: player.name,
+      isPVP: newPVPStatus
+    });
+    
+    // Send confirmation to the player
+    socket.emit('pvpStatusUpdated', {
+      isPVP: newPVPStatus,
+      message: newPVPStatus ? 'PVP mode enabled! You can now attack other PVP players.' : 'PVP mode disabled. You are safe from PVP attacks.'
+    });
+  });
+  
+  // Handle PVP sword attack
+  socket.on('pvpSwordAttack', (data) => {
+    const attacker = players.get(socket.id);
+    const targetId = data.targetId;
+    const target = players.get(targetId);
+    
+    if (!attacker || !target || !attacker.room || attacker.room !== target.room) {
+      socket.emit('error', 'Invalid PVP attack');
+      return;
+    }
+    
+    // Check if attacker is in PVP mode
+    const attackerPVP = playerPVPStatus.get(socket.id);
+    if (!attackerPVP || !attackerPVP.isPVP) {
+      socket.emit('error', 'You must be in PVP mode to attack other players');
+      return;
+    }
+    
+    // Check if target is in PVP mode
+    const targetPVP = playerPVPStatus.get(targetId);
+    if (!targetPVP || !targetPVP.isPVP) {
+      socket.emit('error', 'You can only attack players who are also in PVP mode');
+      return;
+    }
+    
+    // Check distance
+    const distance = Math.sqrt(
+      Math.pow(attacker.position.x - target.position.x, 2) +
+      Math.pow(attacker.position.y - target.position.y, 2)
+    );
+    
+    if (distance > PVP_CONFIG.maxPVPDistance) {
+      socket.emit('error', 'Target is too far away');
+      return;
+    }
+    
+    // Check cooldown
+    const lastDamageTime = pvpDamageCooldown.get(socket.id) || 0;
+    if (Date.now() - lastDamageTime < PVP_CONFIG.damageCooldown) {
+      socket.emit('error', 'Attack on cooldown');
+      return;
+    }
+    
+    // Apply damage
+    const targetStats = playerStats.get(targetId);
+    if (!targetStats) {
+      socket.emit('error', 'Target has no stats');
+      return;
+    }
+    
+    const damage = PVP_CONFIG.swordDamage;
+    targetStats.hp = Math.max(0, targetStats.hp - damage);
+    pvpDamageCooldown.set(socket.id, Date.now());
+    
+    console.log(`PVP Sword Attack: ${attacker.name} (${socket.id}) attacked ${target.name} (${targetId}) for ${damage} damage`);
+    
+    // Broadcast the attack to all players in the room
+    io.to(attacker.room).emit('pvpAttack', {
+      attackerId: socket.id,
+      attackerName: attacker.name,
+      targetId: targetId,
+      targetName: target.name,
+      damage: damage,
+      weaponType: 'sword',
+      targetRemainingHp: targetStats.hp
+    });
+    
+    // Check if target died
+    if (targetStats.hp <= 0) {
+      console.log(`PVP Kill: ${attacker.name} killed ${target.name}`);
+      
+      // Respawn target
+      targetStats.hp = targetStats.maxHp;
+      target.position = { x: 50, y: 100 }; // Respawn position
+      
+      io.to(attacker.room).emit('pvpKill', {
+        killerId: socket.id,
+        killerName: attacker.name,
+        victimId: targetId,
+        victimName: target.name,
+        respawnPosition: target.position
+      });
+    }
+    
+    // Update target's stats
+    io.to(targetId).emit('playerStatsUpdated', targetStats);
+  });
+  
+  // Handle PVP gun attack
+  socket.on('pvpGunAttack', (data) => {
+    const attacker = players.get(socket.id);
+    const targetId = data.targetId;
+    const target = players.get(targetId);
+    
+    if (!attacker || !target || !attacker.room || attacker.room !== target.room) {
+      socket.emit('error', 'Invalid PVP attack');
+      return;
+    }
+    
+    // Check if attacker is in PVP mode
+    const attackerPVP = playerPVPStatus.get(socket.id);
+    if (!attackerPVP || !attackerPVP.isPVP) {
+      socket.emit('error', 'You must be in PVP mode to attack other players');
+      return;
+    }
+    
+    // Check if target is in PVP mode
+    const targetPVP = playerPVPStatus.get(targetId);
+    if (!targetPVP || !targetPVP.isPVP) {
+      socket.emit('error', 'You can only attack players who are also in PVP mode');
+      return;
+    }
+    
+    // Check distance
+    const distance = Math.sqrt(
+      Math.pow(attacker.position.x - target.position.x, 2) +
+      Math.pow(attacker.position.y - target.position.y, 2)
+    );
+    
+    if (distance > PVP_CONFIG.maxPVPDistance * 2) { // Guns have longer range
+      socket.emit('error', 'Target is too far away');
+      return;
+    }
+    
+    // Check cooldown
+    const lastDamageTime = pvpDamageCooldown.get(socket.id) || 0;
+    if (Date.now() - lastDamageTime < PVP_CONFIG.damageCooldown) {
+      socket.emit('error', 'Attack on cooldown');
+      return;
+    }
+    
+    // Apply damage
+    const targetStats = playerStats.get(targetId);
+    if (!targetStats) {
+      socket.emit('error', 'Target has no stats');
+      return;
+    }
+    
+    const damage = PVP_CONFIG.gunDamage;
+    targetStats.hp = Math.max(0, targetStats.hp - damage);
+    pvpDamageCooldown.set(socket.id, Date.now());
+    
+    console.log(`PVP Gun Attack: ${attacker.name} (${socket.id}) shot ${target.name} (${targetId}) for ${damage} damage`);
+    
+    // Broadcast the attack to all players in the room
+    io.to(attacker.room).emit('pvpAttack', {
+      attackerId: socket.id,
+      attackerName: attacker.name,
+      targetId: targetId,
+      targetName: target.name,
+      damage: damage,
+      weaponType: 'gun',
+      targetRemainingHp: targetStats.hp
+    });
+    
+    // Check if target died
+    if (targetStats.hp <= 0) {
+      console.log(`PVP Kill: ${attacker.name} killed ${target.name}`);
+      
+      // Respawn target
+      targetStats.hp = targetStats.maxHp;
+      target.position = { x: 50, y: 100 }; // Respawn position
+      
+      io.to(attacker.room).emit('pvpKill', {
+        killerId: socket.id,
+        killerName: attacker.name,
+        victimId: targetId,
+        victimName: target.name,
+        respawnPosition: target.position
+      });
+    }
+    
+    // Update target's stats
+    io.to(targetId).emit('playerStatsUpdated', targetStats);
   });
 
   // Debug: list all rooms
