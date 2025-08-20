@@ -2386,8 +2386,11 @@ io.on('connection', (socket) => {
   
   // Toggle PVP mode
   socket.on('togglePVP', () => {
+    console.log('Received togglePVP event from socket:', socket.id);
+    
     const player = players.get(socket.id);
     if (!player || !player.room) {
+      console.log('Player not found or not in room:', { player: !!player, room: player?.room });
       socket.emit('error', 'Player not in a room');
       return;
     }

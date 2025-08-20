@@ -1945,11 +1945,14 @@ function App() {
   // PVP System Functions
   
   const togglePVP = () => {
+    console.log('togglePVP called', { socket: !!socket, inRoom, myPvpStatus });
+    
     if (!socket || !inRoom) {
       addCombatMessage('Cannot toggle PVP - not in a room!', 'warning');
       return;
     }
     
+    console.log('Emitting togglePVP event');
     socket.emit('togglePVP');
     console.log('Toggling PVP mode');
   };
@@ -3936,28 +3939,15 @@ function App() {
 
       {/* PVP Controls */}
       {inRoom && (
-        <div className="pvp-controls" style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          background: 'rgba(0, 0, 0, 0.8)',
-          padding: '10px',
-          borderRadius: '8px',
-          color: 'white',
-          fontSize: '12px',
-          zIndex: 1000
-        }}>
+        <div className="pvp-controls">
           <div style={{ marginBottom: '5px' }}>
             <button 
-              onClick={togglePVP}
+              onClick={(e) => {
+                console.log('PVP button clicked!', e);
+                togglePVP();
+              }}
               style={{
-                background: myPvpStatus ? '#ff4444' : '#4CAF50',
-                border: 'none',
-                color: 'white',
-                padding: '8px 15px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
+                background: myPvpStatus ? '#ff4444' : '#4CAF50'
               }}
             >
               {myPvpStatus ? '💀 PVP ON' : '🛡️ PVP OFF'}

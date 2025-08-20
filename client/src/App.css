@@ -3453,6 +3453,42 @@
   font-weight: bold;
 }
 
+/* PVP Controls */
+.pvp-controls {
+  position: fixed !important;
+  bottom: 20px !important;
+  right: 20px !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+  color: white !important;
+  font-size: 12px !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+}
+
+.pvp-controls button {
+  background: #4CAF50 !important;
+  border: none !important;
+  color: white !important;
+  padding: 8px 15px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  transition: all 0.2s ease !important;
+}
+
+.pvp-controls button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.pvp-controls button:active {
+  transform: translateY(0) !important;
+}
+
 .log-death {
   background: rgba(158, 158, 158, 0.2);
   color: #9e9e9e;
