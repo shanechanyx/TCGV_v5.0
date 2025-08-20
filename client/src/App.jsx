@@ -3911,16 +3911,29 @@ function App() {
               {myPvpStatus ? '💀 PVP ON' : '🛡️ PVP OFF'}
             </button>
             
-            {/* Test button */}
+            {/* PVP Debug button */}
             <button 
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('TEST button clicked!', e);
-                alert('Test button works!');
+                console.log('=== MANUAL PVP DEBUG TEST ===');
+                console.log('My PVP status:', myPvpStatus);
+                console.log('All PVP statuses:', pvpStatuses);
+                console.log('Players in room:', players.length);
+                console.log('My position:', playerPositions[socket?.id]);
+                console.log('Socket connected:', !!socket);
+                console.log('In room:', inRoom);
+                
+                // Test sword swing
+                if (playerInventory.hasSword) {
+                  console.log('Testing sword swing...');
+                  performSwordSwing();
+                } else {
+                  console.log('No sword equipped for testing');
+                }
               }}
               style={{
-                background: '#007bff',
+                background: '#ffaa00',
                 border: 'none',
                 color: 'white',
                 padding: '8px 15px',
@@ -3932,7 +3945,7 @@ function App() {
                 zIndex: 1001
               }}
             >
-              🧪 TEST
+              🔍 DEBUG PVP
             </button>
           </div>
           <div style={{ fontSize: '10px', opacity: 0.8 }}>
