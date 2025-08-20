@@ -1905,22 +1905,29 @@ function App() {
   
   const togglePVP = () => {
     console.log('=== PVP TOGGLE FUNCTION CALLED ===');
+    alert('PVP TOGGLE FUNCTION CALLED!'); // Temporary alert to test
     console.log('togglePVP called', { socket: !!socket, inRoom, myPvpStatus });
     console.log('Current PVP statuses:', pvpStatuses);
     
-    if (!socket || !inRoom) {
-      addCombatMessage('Cannot toggle PVP - not in a room!', 'warning');
-      return;
+    // Add error handling
+    try {
+      if (!socket || !inRoom) {
+        addCombatMessage('Cannot toggle PVP - not in a room!', 'warning');
+        return;
+      }
+      
+      console.log('Emitting togglePVP event');
+      socket.emit('togglePVP');
+      console.log('Toggling PVP mode');
+    } catch (error) {
+      console.error('Error in togglePVP:', error);
     }
-    
-    console.log('Emitting togglePVP event');
-    socket.emit('togglePVP');
-    console.log('Toggling PVP mode');
   };
   
   // Universal sword swing that hits everything in range
   const performSwordSwing = () => {
     console.log('=== SWORD SWING FUNCTION CALLED ===');
+    alert('SWORD SWING FUNCTION CALLED!'); // Temporary alert to test
     if (!socket || !inRoom || isAttacking) {
       console.log('Sword swing blocked:', { socket: !!socket, inRoom, isAttacking });
       return;
