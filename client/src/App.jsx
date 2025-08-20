@@ -1905,7 +1905,6 @@ function App() {
   
   const togglePVP = () => {
     console.log('=== PVP TOGGLE FUNCTION CALLED ===');
-    alert('PVP TOGGLE FUNCTION CALLED!'); // Temporary alert to test
     console.log('togglePVP called', { socket: !!socket, inRoom, myPvpStatus });
     console.log('Current PVP statuses:', pvpStatuses);
     
@@ -1927,7 +1926,6 @@ function App() {
   // Universal sword swing that hits everything in range
   const performSwordSwing = () => {
     console.log('=== SWORD SWING FUNCTION CALLED ===');
-    alert('SWORD SWING FUNCTION CALLED!'); // Temporary alert to test
     if (!socket || !inRoom || isAttacking) {
       console.log('Sword swing blocked:', { socket: !!socket, inRoom, isAttacking });
       return;
