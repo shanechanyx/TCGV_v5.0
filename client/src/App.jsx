@@ -2557,6 +2557,17 @@ function App() {
     };
   }, [socket]);
 
+  // Preload monster sprites for better performance
+  useEffect(() => {
+    const monsterTypes = ['goblin', 'orc', 'dragon'];
+    monsterTypes.forEach(monsterType => {
+      const img = new Image();
+      img.onload = () => console.log(`[SPRITE] Preloaded monster sprite: ${monsterType}`);
+      img.onerror = (e) => console.error(`[SPRITE] Failed to preload monster sprite: ${monsterType}`, e);
+      img.src = `/assets/characters/${monsterType}.png`;
+    });
+  }, []);
+
   // Display admin access screen first
   if (showAdminAccess) {
     return (
