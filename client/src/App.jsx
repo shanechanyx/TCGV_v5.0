@@ -13,6 +13,7 @@ import VoiceChat from './VoiceChat';
 import { checkVoiceChatCompatibility } from './browserUtils';
 import Stepper, { Step } from './Stepper';
 import AdminPanel from './AdminPanel';
+import audioManager from './AudioManager';
 
 // Available bubble colors for selection
 const bubbleColors = [
@@ -1132,6 +1133,9 @@ function App() {
   const handleBackToHome = () => {
     setInRoom(false);
     setMessages([]);
+    
+    // Stop background music when leaving room
+    audioManager.stopBackgroundMusic();
   };
 
   const handleEmojiClick = (emoji) => {
@@ -1209,6 +1213,9 @@ function App() {
     const handleRoomJoined = (data) => {
       console.log('Joined room:', data);
       setInRoom(true);
+      
+      // Start background music when entering room
+      audioManager.playBackgroundMusic();
       
       // Initialize positions for all players
       const positions = {};
@@ -1399,6 +1406,9 @@ function App() {
       setMonsters(prev => prev.filter(monster => monster.id !== data.monsterId));
       addCombatMessage(`${data.killerName} defeated the ${data.monsterName}! +${data.expGained} EXP`, 'kill');
       
+      // Play monster death sound
+      audioManager.playMonsterDeath();
+      
       // Update player stats if it's our kill
       if (data.killerId === socket.id) {
         setPlayerStats(data.playerStats);
@@ -1521,6 +1531,17 @@ function App() {
     socket.on('gunShot', (data) => {
       console.log('Gun shot:', data);
       addCombatMessage(`${data.playerName} fired their ${data.gunType}!`, 'attack');
+      
+      // Play gun shot sound for other players' shots
+      if (data.playerId !== socket.id) {
+        if (data.gunType === 'pistol') {
+          audioManager.playPistolShot();
+        } else if (data.gunType === 'shotgun') {
+          audioManager.playShotgunShot();
+        } else if (data.gunType === 'machine_gun') {
+          audioManager.playSMGShot();
+        }
+      }
     });
     
     socket.on('projectileHit', (data) => {
@@ -1782,6 +1803,15 @@ function App() {
       const currentDirection = playerDirections[socket.id] || 'down';
       socket.emit('shootGun', { direction: currentDirection });
       
+      // Play gun shot sound based on gun type
+      if (playerGun.gunType === 'pistol') {
+        audioManager.playPistolShot();
+      } else if (playerGun.gunType === 'shotgun') {
+        audioManager.playShotgunShot();
+      } else if (playerGun.gunType === 'machine_gun') {
+        audioManager.playSMGShot();
+      }
+      
       addCombatMessage(`Shot ${playerGun.gunType}!`, 'attack');
       console.log('=== GUN SHOOT COMPLETE ===');
     } catch (error) {
@@ -1821,6 +1851,8 @@ function App() {
       if (playerGun.gunType === 'machine_gun') {
         // Start continuous firing for machine gun
         socket.emit('startMachineGunFiring');
+        // Play initial SMG shot sound
+        audioManager.playSMGShot();
         addCombatMessage('Started machine gun continuous firing!', 'attack');
       } else {
         // Single shot for pistol and shotgun
@@ -1879,6 +1911,9 @@ function App() {
       
       // Start sword swing animation
       setSwordSwingAngle(0);
+      
+      // Play sword swing sound
+      audioManager.playSwordSwing();
       
       // Perform the attack after a short delay for animation
       setTimeout(() => {
@@ -3684,6 +3719,60 @@ function App() {
           </>
         )}
       </div>
+
+      {/* Audio Controls */}
+      {inRoom && (
+        <div className="audio-controls" style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          padding: '10px',
+          borderRadius: '8px',
+          color: 'white',
+          fontSize: '12px',
+          zIndex: 1000
+        }}>
+          <div style={{ marginBottom: '5px' }}>
+            <button 
+              onClick={() => audioManager.setMuted(!audioManager.isMuted)}
+              style={{
+                background: audioManager.isMuted ? '#ff4444' : '#4CAF50',
+                border: 'none',
+                color: 'white',
+                padding: '5px 10px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginRight: '10px'
+              }}
+            >
+              {audioManager.isMuted ? '🔇 Unmute' : '🔊 Mute'}
+            </button>
+            <span>Music: {Math.round(audioManager.musicVolume * 100)}%</span>
+          </div>
+          <div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={audioManager.musicVolume}
+              onChange={(e) => audioManager.setMusicVolume(parseFloat(e.target.value))}
+              style={{ width: '100px', marginRight: '10px' }}
+            />
+            <span>SFX: {Math.round(audioManager.sfxVolume * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={audioManager.sfxVolume}
+              onChange={(e) => audioManager.setSFXVolume(parseFloat(e.target.value))}
+              style={{ width: '100px' }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Add VoiceChat component at bottom of return statement before final closing div */}
       {inRoom && roomId && (
