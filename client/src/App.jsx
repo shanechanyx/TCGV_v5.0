@@ -2251,10 +2251,15 @@ function App() {
       if (e.key === ' ') {
         // Handle Spacebar for SWORD attacks only
         e.preventDefault();
+        console.log('=== SPACEBAR PRESSED ===');
+        console.log('playerInventory.hasSword:', playerInventory.hasSword);
+        console.log('playerInventory:', playerInventory);
         
         if (playerInventory.hasSword) {
+          console.log('Calling performSwordSwing...');
           performSwordSwing(); // Universal sword swing that hits everything in range
         } else {
+          console.log('No sword equipped - showing warning');
           addCombatMessage('No sword equipped!', 'warning');
         }
       }
@@ -2262,17 +2267,24 @@ function App() {
       if (e.key === 'c' || e.key === 'C') {
         // Handle C key for GUN attacks only
         e.preventDefault();
+        console.log('=== C KEY PRESSED ===');
+        console.log('playerGun:', playerGun);
+        console.log('playerGun.hasGun:', playerGun?.hasGun);
+        console.log('playerGun.ammo:', playerGun?.ammo);
         
         if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
           if (playerGun.gunType === 'machine_gun') {
             // Start continuous firing for machine gun
+            console.log('Starting machine gun firing...');
             socket.emit('startMachineGunFiring');
             audioManager.playSMGShot();
             addCombatMessage('Started machine gun firing!', 'attack');
           } else {
+            console.log('Calling performGunShot...');
             performGunShot(); // Universal gun shot that hits everything in range
           }
         } else {
+          console.log('No gun equipped or out of ammo - showing warning');
           addCombatMessage('No gun equipped or out of ammo!', 'warning');
         }
       }
