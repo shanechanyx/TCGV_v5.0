@@ -90,7 +90,7 @@ const PVP_CONFIG = {
   damageCooldown: 2000, // 2 seconds between PVP damage
   swordDamage: 25, // Sword damage to other players
   gunDamage: 30, // Gun damage to other players
-  maxPVPDistance: 80, // Maximum distance for PVP attacks
+  maxPVPDistance: 300, // Maximum distance for PVP attacks (matches client)
   pvpIndicator: '💀' // Red skull emoji for PVP indicator
 };
 

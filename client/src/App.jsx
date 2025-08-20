@@ -1988,7 +1988,7 @@ function App() {
     // Play sword swing sound
     audioManager.playSwordSwing();
     
-    // Find all targets in sword range (80 pixels)
+    // Find all targets in sword range (200 pixels for PVP, 80 for monsters)
     const targets = [];
     
     // Check monsters in range
@@ -2007,7 +2007,7 @@ function App() {
           const theirPosition = playerPositions[player.id] || { x: 0, y: 0 };
           const distance = calculateDistance(myPosition, theirPosition);
           console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, position=${JSON.stringify(theirPosition)}`);
-          if (distance <= 80) {
+          if (distance <= 200) {
             targets.push({ type: 'player', id: player.id, distance });
             console.log(`Added PVP player ${player.name} to targets`);
           }
@@ -2077,7 +2077,7 @@ function App() {
     console.log('Players in room:', players.length);
     console.log('My position:', myPosition);
     
-    // Find all targets in gun range (180 pixels)
+    // Find all targets in gun range (300 pixels for PVP, 180 for monsters)
     const targets = [];
     
     // Check monsters in range
@@ -2096,7 +2096,7 @@ function App() {
           const theirPosition = playerPositions[player.id] || { x: 0, y: 0 };
           const distance = calculateDistance(myPosition, theirPosition);
           console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, position=${JSON.stringify(theirPosition)}`);
-          if (distance <= 180) {
+          if (distance <= 300) {
             targets.push({ type: 'player', id: player.id, distance });
             console.log(`Added PVP player ${player.name} to gun targets`);
           }
