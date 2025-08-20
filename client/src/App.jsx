@@ -1597,21 +1597,35 @@ function App() {
       console.log('PVP attack:', data);
       addCombatMessage(`${data.attackerName} attacked ${data.targetName} for ${data.damage} damage!`, 'pvp');
       
-      // If we are the target, update our HP
-      if (data.targetId === socket.id) {
-        const newHP = Math.max(0, playerStats.hp - data.damage);
-        setPlayerStats(prev => ({
-          ...prev,
-          hp: newHP
-        }));
-        
-        // Check if we died
-        if (newHP <= 0) {
-          setIsDead(true);
-          setShowRevivalPopup(true);
-          addCombatMessage('You have been killed! Click to revive.', 'death');
+      // Update HP for the target player (works for both self and others)
+      setPlayerStats(prev => {
+        const newStats = { ...prev };
+        if (data.targetId === socket.id) {
+          // If we are the target, update our HP
+          const newHP = Math.max(0, (newStats.hp || 100) - data.damage);
+          newStats.hp = newHP;
+          
+          // Check if we died
+          if (newHP <= 0) {
+            console.log('=== PLAYER DIED ===');
+            console.log('Setting isDead to true');
+            console.log('Setting showRevivalPopup to true');
+            setIsDead(true);
+            setShowRevivalPopup(true);
+            addCombatMessage('You have been killed! Click to revive.', 'death');
+          }
+        } else {
+          // If someone else is the target, update their HP in our local state
+          // This ensures HP bars update for all players
+          const targetPlayerStats = newStats[data.targetId] || { hp: 100, maxHp: 100 };
+          const newHP = Math.max(0, targetPlayerStats.hp - data.damage);
+          newStats[data.targetId] = {
+            ...targetPlayerStats,
+            hp: newHP
+          };
         }
-      }
+        return newStats;
+      });
       
       // Play appropriate sound effect
       if (data.weaponType === 'sword') {
@@ -2071,22 +2085,27 @@ function App() {
   
   // Revival function
   const handleRevival = () => {
-    if (!socket || !inRoom) return;
+    console.log('=== REVIVAL ATTEMPT ===');
+    console.log('Socket:', !!socket);
+    console.log('In room:', inRoom);
+    console.log('Is dead:', isDead);
+    console.log('Show revival popup:', showRevivalPopup);
     
-    // Reset HP to full
-    setPlayerStats(prev => ({
-      ...prev,
-      hp: prev.maxHp
-    }));
+    if (!socket || !inRoom) {
+      console.log('Cannot revive: missing socket or not in room');
+      return;
+    }
     
-    // Reset death state
-    setIsDead(false);
-    setShowRevivalPopup(false);
+    console.log('Emitting playerRevived event to server...');
     
     // Emit revival event to server
     socket.emit('playerRevived');
     
-    addCombatMessage('You have been revived!', 'revival');
+    // Reset death state immediately for better UX
+    setIsDead(false);
+    setShowRevivalPopup(false);
+    
+    addCombatMessage('Revival request sent!', 'revival');
   };
 
   // Universal gun shot that hits everything in range
@@ -3325,7 +3344,7 @@ function App() {
                     <div 
                       className="hp-fill"
                       style={{
-                        width: `${Math.max(0, Math.min(100, ((playerStats?.[player.id]?.hp || 100) / (playerStats?.[player.id]?.maxHp || 100)) * 100))}%`,
+                        width: `${Math.max(0, Math.min(100, ((playerStats?.[player.id]?.hp || playerStats?.hp || 100) / (playerStats?.[player.id]?.maxHp || playerStats?.maxHp || 100)) * 100))}%`,
                         height: '100%',
                         background: 'linear-gradient(to right, #ff4444, #ffaa00, #4CAF50)',
                         borderRadius: '2px',
@@ -4120,13 +4139,32 @@ function App() {
       
       {/* Revival Popup */}
       {showRevivalPopup && isDead && (
-        <div className="revival-popup-overlay">
-          <div className="revival-popup">
+        <div className="revival-popup-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999
+        }}>
+          <div className="revival-popup" style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '15px',
+            textAlign: 'center',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
             <div className="revival-content">
-              <h2>💀 You Have Died!</h2>
-              <p>Your HP has reached 0. Click the button below to revive.</p>
-              <div className="revival-stats">
-                <p><strong>Current HP:</strong> {playerStats.hp}/{playerStats.maxHp}</p>
+              <h2 style={{ color: '#d32f2f', marginBottom: '20px' }}>💀 You Have Died!</h2>
+              <p style={{ marginBottom: '20px', fontSize: '16px' }}>Your HP has reached 0. Click the button below to revive.</p>
+              <div className="revival-stats" style={{ marginBottom: '25px' }}>
+                <p><strong>Current HP:</strong> {playerStats?.hp || 0}/{playerStats?.maxHp || 100}</p>
               </div>
               <button 
                 className="revival-button"
@@ -4135,13 +4173,14 @@ function App() {
                   background: '#4CAF50',
                   color: 'white',
                   border: 'none',
-                  padding: '15px 30px',
-                  borderRadius: '8px',
-                  fontSize: '16px',
+                  padding: '20px 40px',
+                  borderRadius: '10px',
+                  fontSize: '18px',
                   fontWeight: 'bold',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-                  transition: 'all 0.3s ease'
+                  boxShadow: '0 6px 12px rgba(0,0,0,0.3)',
+                  transition: 'all 0.3s ease',
+                  minWidth: '200px'
                 }}
                 onMouseOver={(e) => e.target.style.background = '#45a049'}
                 onMouseOut={(e) => e.target.style.background = '#4CAF50'}
