@@ -2803,6 +2803,17 @@
   margin-top: -5px;
 }
 
+/* Version info styling */
+.version-info {
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
 /* Add success message styling */
 .success-message {
   color: #10b981;

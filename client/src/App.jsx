@@ -2733,8 +2733,9 @@ function App() {
               nextButtonText="Next"
             >
               <Step>
-                <h2 className="app-title">Welcome to Chat.io</h2>
+                <h2 className="app-title">Welcome to TCG Verse</h2>
                 <p className="app-subtitle">Meet, Chat, Belong—Anytime, Anywhere</p>
+                <p className="version-info">v5.0</p>
                 {error && <div className="error-message">{error}</div>}
                 {successMessage && <div className="success-message">{successMessage}</div>}
                 
