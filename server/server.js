@@ -2444,25 +2444,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Check distance
-    const distance = Math.sqrt(
-      Math.pow(attacker.position.x - target.position.x, 2) +
-      Math.pow(attacker.position.y - target.position.y, 2)
-    );
-    
-    if (distance > PVP_CONFIG.maxPVPDistance) {
-      socket.emit('error', 'Target is too far away');
-      return;
-    }
-    
-    // Check cooldown
-    const lastDamageTime = pvpDamageCooldown.get(socket.id) || 0;
-    if (Date.now() - lastDamageTime < PVP_CONFIG.damageCooldown) {
-      socket.emit('error', 'Attack on cooldown');
-      return;
-    }
-    
-    // Apply damage
+    // Apply damage (client handles range checking)
     const targetStats = playerStats.get(targetId);
     if (!targetStats) {
       socket.emit('error', 'Target has no stats');
@@ -2471,7 +2453,6 @@ io.on('connection', (socket) => {
     
     const damage = PVP_CONFIG.swordDamage;
     targetStats.hp = Math.max(0, targetStats.hp - damage);
-    pvpDamageCooldown.set(socket.id, Date.now());
     
     console.log(`PVP Sword Attack: ${attacker.name} (${socket.id}) attacked ${target.name} (${targetId}) for ${damage} damage`);
     
@@ -2532,25 +2513,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Check distance
-    const distance = Math.sqrt(
-      Math.pow(attacker.position.x - target.position.x, 2) +
-      Math.pow(attacker.position.y - target.position.y, 2)
-    );
-    
-    if (distance > PVP_CONFIG.maxPVPDistance * 2) { // Guns have longer range
-      socket.emit('error', 'Target is too far away');
-      return;
-    }
-    
-    // Check cooldown
-    const lastDamageTime = pvpDamageCooldown.get(socket.id) || 0;
-    if (Date.now() - lastDamageTime < PVP_CONFIG.damageCooldown) {
-      socket.emit('error', 'Attack on cooldown');
-      return;
-    }
-    
-    // Apply damage
+    // Apply damage (client handles range checking)
     const targetStats = playerStats.get(targetId);
     if (!targetStats) {
       socket.emit('error', 'Target has no stats');
@@ -2559,7 +2522,6 @@ io.on('connection', (socket) => {
     
     const damage = PVP_CONFIG.gunDamage;
     targetStats.hp = Math.max(0, targetStats.hp - damage);
-    pvpDamageCooldown.set(socket.id, Date.now());
     
     console.log(`PVP Gun Attack: ${attacker.name} (${socket.id}) shot ${target.name} (${targetId}) for ${damage} damage`);
     

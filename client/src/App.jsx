@@ -1916,124 +1916,131 @@ function App() {
     console.log('Toggling PVP mode');
   };
   
-  const attackPVPPlayer = (targetId, weaponType) => {
-    console.log('attackPVPPlayer called:', { targetId, weaponType, socket: !!socket, inRoom, myPvpStatus, targetPvpStatus: pvpStatuses[targetId] });
-    
-    if (!socket || !inRoom) {
-      addCombatMessage('Cannot attack - not in a room!', 'warning');
-      return;
-    }
-    
-    if (!myPvpStatus) {
-      addCombatMessage('You must be in PVP mode to attack other players!', 'warning');
-      return;
-    }
-    
-    if (!pvpStatuses[targetId]) {
-      addCombatMessage('You can only attack players who are also in PVP mode!', 'warning');
-      return;
-    }
-    
-    console.log('Emitting PVP attack:', { weaponType, targetId });
-    
-    if (weaponType === 'sword') {
-      socket.emit('pvpSwordAttack', { targetId });
-      addCombatMessage(`Sword attack sent to ${targetId}!`, 'pvp');
-    } else if (weaponType === 'gun') {
-      socket.emit('pvpGunAttack', { targetId });
-      addCombatMessage(`Gun attack sent to ${targetId}!`, 'pvp');
-    }
-    
-    console.log(`PVP attack: ${weaponType} attack on ${targetId}`);
-  };
-
-  // F key attack function
-  const performFKeyAttack = () => {
+  // Universal sword swing that hits everything in range
+  const performSwordSwing = () => {
     if (!socket || !inRoom || isAttacking) return;
     
     const myPosition = playerPositions[socket.id];
     if (!myPosition) return;
     
-    // Check if player has a sword
-    if (!playerInventory.hasSword) {
-      addCombatMessage('You need a sword to attack!', 'warning');
-      return;
-    }
+    // Start attack animation
+    setIsAttacking(true);
+    setSwordSwingAngle(0);
     
-    // Find the closest monster in range
-    let closestMonster = null;
-    let closestDistance = Infinity;
+    // Play sword swing sound
+    audioManager.playSwordSwing();
     
+    // Find all targets in sword range (80 pixels)
+    const targets = [];
+    
+    // Check monsters in range
     monsters.forEach(monster => {
       const distance = calculateDistance(myPosition, monster.position);
-      if (distance <= 60 && distance < closestDistance) { // 60px attack range
-        closestDistance = distance;
-        closestMonster = monster;
+      if (distance <= 80) {
+        targets.push({ type: 'monster', id: monster.id, distance });
       }
     });
     
-    if (closestMonster) {
-      // Start attack animation
-      setIsAttacking(true);
-      setAttackAnimation(prev => ({
-        ...prev,
-        [socket.id]: {
-          startTime: Date.now(),
-          targetMonster: closestMonster.id
+    // Check PVP players in range (if PVP mode is on)
+    if (myPvpStatus) {
+      players.forEach(player => {
+        if (player.id !== socket.id && pvpStatuses[player.id]) {
+          const distance = calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 });
+          if (distance <= 80) {
+            targets.push({ type: 'player', id: player.id, distance });
+          }
         }
-      }));
-      
-      // Start sword swing animation
-      setSwordSwingAngle(0);
-      
-      // Play sword swing sound
-      audioManager.playSwordSwing();
-      
-      // Perform the attack after a short delay for animation
-      setTimeout(() => {
-        attackMonster(closestMonster.id);
-        
-        // End attack animation after swing completes
-        setTimeout(() => {
-          setIsAttacking(false);
-          setAttackAnimation(prev => {
-            const newState = { ...prev };
-            delete newState[socket.id];
-            return newState;
-          });
-          setSwordSwingAngle(0);
-        }, 300); // Sword swing duration
-      }, 100); // Attack delay
+      });
+    }
+    
+    console.log('Sword swing targets:', targets);
+    
+    // Attack all targets
+    targets.forEach(target => {
+      if (target.type === 'monster') {
+        attackMonster(target.id);
+      } else if (target.type === 'player') {
+        socket.emit('pvpSwordAttack', { targetId: target.id });
+        addCombatMessage(`Sword hit player!`, 'pvp');
+      }
+    });
+    
+    if (targets.length === 0) {
+      addCombatMessage('Sword swing - nothing in range!', 'info');
     } else {
-      // Show visual feedback for no monsters in range
-      addCombatMessage('No monsters in range!', 'warning');
-      
-      // Create a temporary visual indicator
-      const indicator = document.createElement('div');
-      indicator.className = 'combat-message-spacebar';
-      indicator.textContent = 'No monsters in range!';
-      indicator.style.position = 'fixed';
-      indicator.style.top = '50%';
-      indicator.style.left = '50%';
-      indicator.style.transform = 'translate(-50%, -50%)';
-      indicator.style.background = 'rgba(255, 0, 0, 0.9)';
-      indicator.style.color = 'white';
-      indicator.style.padding = '10px 20px';
-      indicator.style.borderRadius = '8px';
-      indicator.style.fontWeight = 'bold';
-      indicator.style.zIndex = '1000';
-      indicator.style.animation = 'combatMessage 1s ease-out forwards';
-      
-      document.body.appendChild(indicator);
-      
-      // Remove the indicator after animation
-      setTimeout(() => {
-        if (indicator.parentNode) {
-          indicator.parentNode.removeChild(indicator);
+      addCombatMessage(`Sword swing hit ${targets.length} target(s)!`, 'attack');
+    }
+    
+    // End attack animation after swing completes
+    setTimeout(() => {
+      setIsAttacking(false);
+      setSwordSwingAngle(0);
+    }, 300);
+  };
+  
+  // Universal gun shot that hits everything in range
+  const performGunShot = () => {
+    if (!socket || !inRoom) return;
+    
+    const myPosition = playerPositions[socket.id];
+    if (!myPosition) return;
+    
+    // Find all targets in gun range (180 pixels)
+    const targets = [];
+    
+    // Check monsters in range
+    monsters.forEach(monster => {
+      const distance = calculateDistance(myPosition, monster.position);
+      if (distance <= 180) {
+        targets.push({ type: 'monster', id: monster.id, distance });
+      }
+    });
+    
+    // Check PVP players in range (if PVP mode is on)
+    if (myPvpStatus) {
+      players.forEach(player => {
+        if (player.id !== socket.id && pvpStatuses[player.id]) {
+          const distance = calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 });
+          if (distance <= 180) {
+            targets.push({ type: 'player', id: player.id, distance });
+          }
         }
-      }, 1000);
+      });
+    }
+    
+    console.log('Gun shot targets:', targets);
+    
+    // Attack all targets
+    targets.forEach(target => {
+      if (target.type === 'monster') {
+        // Use existing gun shooting mechanism for monsters
+        socket.emit('shootGun', { 
+          gunType: playerGun.gunType,
+          direction: { x: 0, y: 1 } // Default direction, will be calculated server-side
+        });
+      } else if (target.type === 'player') {
+        socket.emit('pvpGunAttack', { targetId: target.id });
+        addCombatMessage(`Gun shot hit player!`, 'pvp');
+      }
+    });
+    
+    if (targets.length === 0) {
+      addCombatMessage('Gun shot - nothing in range!', 'info');
+    } else {
+      addCombatMessage(`Gun shot hit ${targets.length} target(s)!`, 'attack');
+    }
+    
+    // Play appropriate gun sound
+    if (playerGun.gunType === 'pistol') {
+      audioManager.playPistolShot();
+    } else if (playerGun.gunType === 'shotgun') {
+      audioManager.playShotgunShot();
+    } else if (playerGun.gunType === 'machine_gun') {
+      audioManager.playSMGShot();
     }
   };
+
+
 
   const isInAttackRange = (playerPos, monsterPos, range = 60) => {
     return calculateDistance(playerPos, monsterPos) <= range;
@@ -2093,35 +2100,41 @@ function App() {
   // Function to handle key presses for interaction
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Spacebar for sword pickup and attack
       if (e.key === ' ') {
-        e.preventDefault(); // Prevent page scrolling
+        // Handle Spacebar for SWORD attacks only
+        e.preventDefault();
         
-        const myPosition = playerPositions[socket?.id];
-        if (!myPosition) return;
-        
-        // First check if player has a sword and can attack monsters
-        if (playerInventory.hasSword && monsters.length > 0) {
-          let closestMonster = null;
-          let closestDistance = Infinity;
-          
-          monsters.forEach(monster => {
-            const distance = calculateDistance(myPosition, monster.position);
-            if (distance <= 60 && distance < closestDistance) {
-              closestDistance = distance;
-              closestMonster = monster;
-            }
-          });
-          
-          // If monster in range, attack
-          if (closestMonster && !isAttacking) {
-            performFKeyAttack();
-            return;
-          }
+        if (playerInventory.hasSword) {
+          performSwordSwing(); // Universal sword swing that hits everything in range
+        } else {
+          addCombatMessage('No sword equipped!', 'warning');
         }
+      }
+      
+      if (e.key === 'c' || e.key === 'C') {
+        // Handle C key for GUN attacks only
+        e.preventDefault();
         
-        // If no sword or no monsters in range, check for swords to pickup
-        if (swords.length > 0) {
+        if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
+          if (playerGun.gunType === 'machine_gun') {
+            // Start continuous firing for machine gun
+            socket.emit('startMachineGunFiring');
+            audioManager.playSMGShot();
+            addCombatMessage('Started machine gun firing!', 'attack');
+          } else {
+            performGunShot(); // Universal gun shot that hits everything in range
+          }
+        } else {
+          addCombatMessage('No gun equipped or out of ammo!', 'warning');
+        }
+      }
+      
+      if (e.key === 'f' || e.key === 'F') {
+        // F key is ONLY for pickup and interaction, NOT for attacks
+        const myPosition = playerPositions[socket?.id];
+        
+        // Check for swords to pickup
+        if (myPosition && swords.length > 0) {
           let closestSword = null;
           let closestDistance = Infinity;
           
@@ -2135,47 +2148,13 @@ function App() {
           
           // If sword in range, pickup
           if (closestSword) {
-            pickupSword(closestSword.id);
-            return;
-          }
-        }
-        
-        // If no sword to pickup and no monsters to attack, show feedback
-        if (!playerInventory.hasSword && swords.length === 0 && monsters.length === 0) {
-          addCombatMessage('No swords or monsters nearby!', 'warning');
-        } else if (!playerInventory.hasSword && swords.length > 0) {
-          addCombatMessage('Walk closer to the sword to pick it up!', 'info');
-        } else if (playerInventory.hasSword && monsters.length > 0) {
-          addCombatMessage('Walk closer to the monster to attack!', 'info');
-        }
-      }
-      
-      if (e.key === 'f' || e.key === 'F') {
-        // F key is ONLY for pickup and interaction, NOT for attacks
-        const myPosition = playerPositions[socket?.id];
-        
-        // If no monsters in range, check for swords to pickup
-        if (myPosition && swords.length > 0) {
-          let closestSword = null;
-          let closestDistance = Infinity;
-          
-          swords.forEach(sword => {
-            const distance = calculateDistance(myPosition, sword.position);
-            if (distance <= 60 && distance < closestDistance) {
-              closestDistance = distance;
-              closestSword = sword;
-            }
-          });
-          
-          // If sword in range, pickup instead of player interaction
-          if (closestSword) {
             e.preventDefault();
             pickupSword(closestSword.id);
             return;
           }
         }
         
-        // If no monsters or swords in range, check for guns to pickup
+        // Check for guns to pickup
         if (myPosition && guns.length > 0) {
           let closestGun = null;
           let closestDistance = Infinity;
@@ -2188,7 +2167,7 @@ function App() {
             }
           });
           
-          // If gun in range, pickup instead of player interaction
+          // If gun in range, pickup
           if (closestGun) {
             e.preventDefault();
             pickupGun(closestGun.id);
@@ -2196,7 +2175,7 @@ function App() {
           }
         }
         
-        // If no monsters or swords or guns in range, handle player interaction
+        // Handle player interaction
         if (showProximityPrompt && nearbyPlayers.length > 0) {
           // Select the closest player
           const closestPlayer = [...nearbyPlayers].sort((a, b) => a.distance - b.distance)[0];
@@ -2225,87 +2204,6 @@ function App() {
               startMenuTimer();
             }
           }
-        }
-      }
-      
-      if (e.key === ' ') {
-        // Handle Spacebar for SWORD attacks only
-        e.preventDefault();
-        
-        // Check for PVP sword attacks first (if both players are in PVP mode)
-        if (myPvpStatus && players.length > 0) {
-          const myPosition = playerPositions[socket?.id];
-          if (myPosition) {
-            // Check all players for PVP sword attack range (80 pixels)
-            const pvpPlayers = players
-              .filter(player => player.id !== socket.id && pvpStatuses[player.id])
-              .map(player => ({
-                ...player,
-                distance: calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 })
-              }))
-              .filter(player => player.distance <= 80); // PVP sword attack range
-            
-            console.log('Spacebar PVP check:', { myPvpStatus, players: players.length, pvpPlayers: pvpPlayers.length });
-            if (pvpPlayers.length > 0) {
-              const closestPVPPlayer = pvpPlayers.sort((a, b) => a.distance - b.distance)[0];
-              console.log('Found PVP player for sword attack:', closestPVPPlayer);
-              if (playerInventory.hasSword) {
-                attackPVPPlayer(closestPVPPlayer.id, 'sword');
-                return;
-              }
-            }
-          }
-        }
-        
-        // Regular PVE sword attacks
-        if (playerInventory.hasSword) {
-          performFKeyAttack(); // Sword attack
-        } else {
-          addCombatMessage('No sword equipped!', 'warning');
-        }
-      }
-      
-      if (e.key === 'c' || e.key === 'C') {
-        // Handle C key for GUN attacks only
-        e.preventDefault();
-        
-        // Check for PVP gun attacks first (if both players are in PVP mode)
-        if (myPvpStatus && players.length > 0) {
-          const myPosition = playerPositions[socket?.id];
-          if (myPosition) {
-            // Check all players for PVP gun attack range (160 pixels)
-            const pvpPlayers = players
-              .filter(player => player.id !== socket.id && pvpStatuses[player.id])
-              .map(player => ({
-                ...player,
-                distance: calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 })
-              }))
-              .filter(player => player.distance <= 160); // PVP gun attack range
-            
-            console.log('C key PVP check:', { myPvpStatus, players: players.length, pvpPlayers: pvpPlayers.length });
-            if (pvpPlayers.length > 0) {
-              const closestPVPPlayer = pvpPlayers.sort((a, b) => a.distance - b.distance)[0];
-              console.log('Found PVP player for gun attack:', closestPVPPlayer);
-              if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
-                attackPVPPlayer(closestPVPPlayer.id, 'gun');
-                return;
-              }
-            }
-          }
-        }
-        
-        // Regular PVE gun attacks
-        if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
-          if (playerGun.gunType === 'machine_gun') {
-            // Start continuous firing for machine gun
-            socket.emit('startMachineGunFiring');
-            audioManager.playSMGShot();
-            addCombatMessage('Started machine gun firing!', 'attack');
-          } else {
-            shootGun(); // Single shot for other guns
-          }
-        } else {
-          addCombatMessage('No gun equipped or out of ammo!', 'warning');
         }
       }
       
