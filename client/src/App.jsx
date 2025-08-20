@@ -1904,7 +1904,9 @@ function App() {
   // PVP System Functions
   
   const togglePVP = () => {
+    console.log('=== PVP TOGGLE DEBUG ===');
     console.log('togglePVP called', { socket: !!socket, inRoom, myPvpStatus });
+    console.log('Current PVP statuses:', pvpStatuses);
     
     if (!socket || !inRoom) {
       addCombatMessage('Cannot toggle PVP - not in a room!', 'warning');
@@ -1922,6 +1924,12 @@ function App() {
     
     const myPosition = playerPositions[socket.id];
     if (!myPosition) return;
+    
+    console.log('=== SWORD SWING DEBUG ===');
+    console.log('My PVP status:', myPvpStatus);
+    console.log('All PVP statuses:', pvpStatuses);
+    console.log('Players in room:', players.length);
+    console.log('My position:', myPosition);
     
     // Start attack animation
     setIsAttacking(true);
@@ -1943,14 +1951,20 @@ function App() {
     
     // Check PVP players in range (if PVP mode is on)
     if (myPvpStatus) {
+      console.log('Checking PVP players...');
       players.forEach(player => {
         if (player.id !== socket.id && pvpStatuses[player.id]) {
-          const distance = calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 });
+          const theirPosition = playerPositions[player.id] || { x: 0, y: 0 };
+          const distance = calculateDistance(myPosition, theirPosition);
+          console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, position=${JSON.stringify(theirPosition)}`);
           if (distance <= 80) {
             targets.push({ type: 'player', id: player.id, distance });
+            console.log(`Added PVP player ${player.name} to targets`);
           }
         }
       });
+    } else {
+      console.log('PVP mode is OFF - not checking for PVP players');
     }
     
     console.log('Sword swing targets:', targets);
@@ -1958,8 +1972,10 @@ function App() {
     // Attack all targets
     targets.forEach(target => {
       if (target.type === 'monster') {
+        console.log(`Attacking monster ${target.id}`);
         attackMonster(target.id);
       } else if (target.type === 'player') {
+        console.log(`Attacking PVP player ${target.id}`);
         socket.emit('pvpSwordAttack', { targetId: target.id });
         addCombatMessage(`Sword hit player!`, 'pvp');
       }
@@ -1985,6 +2001,12 @@ function App() {
     const myPosition = playerPositions[socket.id];
     if (!myPosition) return;
     
+    console.log('=== GUN SHOT DEBUG ===');
+    console.log('My PVP status:', myPvpStatus);
+    console.log('All PVP statuses:', pvpStatuses);
+    console.log('Players in room:', players.length);
+    console.log('My position:', myPosition);
+    
     // Find all targets in gun range (180 pixels)
     const targets = [];
     
@@ -1998,14 +2020,20 @@ function App() {
     
     // Check PVP players in range (if PVP mode is on)
     if (myPvpStatus) {
+      console.log('Checking PVP players for gun shot...');
       players.forEach(player => {
         if (player.id !== socket.id && pvpStatuses[player.id]) {
-          const distance = calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 });
+          const theirPosition = playerPositions[player.id] || { x: 0, y: 0 };
+          const distance = calculateDistance(myPosition, theirPosition);
+          console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, position=${JSON.stringify(theirPosition)}`);
           if (distance <= 180) {
             targets.push({ type: 'player', id: player.id, distance });
+            console.log(`Added PVP player ${player.name} to gun targets`);
           }
         }
       });
+    } else {
+      console.log('PVP mode is OFF - not checking for PVP players');
     }
     
     console.log('Gun shot targets:', targets);
@@ -2013,12 +2041,14 @@ function App() {
     // Attack all targets
     targets.forEach(target => {
       if (target.type === 'monster') {
+        console.log(`Shooting monster ${target.id}`);
         // Use existing gun shooting mechanism for monsters
         socket.emit('shootGun', { 
           gunType: playerGun.gunType,
           direction: { x: 0, y: 1 } // Default direction, will be calculated server-side
         });
       } else if (target.type === 'player') {
+        console.log(`Shooting PVP player ${target.id}`);
         socket.emit('pvpGunAttack', { targetId: target.id });
         addCombatMessage(`Gun shot hit player!`, 'pvp');
       }
