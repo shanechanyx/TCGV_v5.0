@@ -1938,8 +1938,10 @@ function App() {
     
     if (weaponType === 'sword') {
       socket.emit('pvpSwordAttack', { targetId });
+      addCombatMessage(`Sword attack sent to ${targetId}!`, 'pvp');
     } else if (weaponType === 'gun') {
       socket.emit('pvpGunAttack', { targetId });
+      addCombatMessage(`Gun attack sent to ${targetId}!`, 'pvp');
     }
     
     console.log(`PVP attack: ${weaponType} attack on ${targetId}`);
@@ -2231,15 +2233,26 @@ function App() {
         e.preventDefault();
         
         // Check for PVP sword attacks first (if both players are in PVP mode)
-        if (myPvpStatus && nearbyPlayers.length > 0) {
-          const pvpPlayers = nearbyPlayers.filter(player => pvpStatuses[player.id]);
-          console.log('Spacebar PVP check:', { myPvpStatus, nearbyPlayers: nearbyPlayers.length, pvpPlayers: pvpPlayers.length });
-          if (pvpPlayers.length > 0) {
-            const closestPVPPlayer = pvpPlayers[0];
-            console.log('Found PVP player for sword attack:', closestPVPPlayer);
-            if (playerInventory.hasSword) {
-              attackPVPPlayer(closestPVPPlayer.id, 'sword');
-              return;
+        if (myPvpStatus && players.length > 0) {
+          const myPosition = playerPositions[socket?.id];
+          if (myPosition) {
+            // Check all players for PVP sword attack range (80 pixels)
+            const pvpPlayers = players
+              .filter(player => player.id !== socket.id && pvpStatuses[player.id])
+              .map(player => ({
+                ...player,
+                distance: calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 })
+              }))
+              .filter(player => player.distance <= 80); // PVP sword attack range
+            
+            console.log('Spacebar PVP check:', { myPvpStatus, players: players.length, pvpPlayers: pvpPlayers.length });
+            if (pvpPlayers.length > 0) {
+              const closestPVPPlayer = pvpPlayers.sort((a, b) => a.distance - b.distance)[0];
+              console.log('Found PVP player for sword attack:', closestPVPPlayer);
+              if (playerInventory.hasSword) {
+                attackPVPPlayer(closestPVPPlayer.id, 'sword');
+                return;
+              }
             }
           }
         }
@@ -2257,15 +2270,26 @@ function App() {
         e.preventDefault();
         
         // Check for PVP gun attacks first (if both players are in PVP mode)
-        if (myPvpStatus && nearbyPlayers.length > 0) {
-          const pvpPlayers = nearbyPlayers.filter(player => pvpStatuses[player.id]);
-          console.log('C key PVP check:', { myPvpStatus, nearbyPlayers: nearbyPlayers.length, pvpPlayers: pvpPlayers.length });
-          if (pvpPlayers.length > 0) {
-            const closestPVPPlayer = pvpPlayers[0];
-            console.log('Found PVP player for gun attack:', closestPVPPlayer);
-            if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
-              attackPVPPlayer(closestPVPPlayer.id, 'gun');
-              return;
+        if (myPvpStatus && players.length > 0) {
+          const myPosition = playerPositions[socket?.id];
+          if (myPosition) {
+            // Check all players for PVP gun attack range (160 pixels)
+            const pvpPlayers = players
+              .filter(player => player.id !== socket.id && pvpStatuses[player.id])
+              .map(player => ({
+                ...player,
+                distance: calculateDistance(myPosition, playerPositions[player.id] || { x: 0, y: 0 })
+              }))
+              .filter(player => player.distance <= 160); // PVP gun attack range
+            
+            console.log('C key PVP check:', { myPvpStatus, players: players.length, pvpPlayers: pvpPlayers.length });
+            if (pvpPlayers.length > 0) {
+              const closestPVPPlayer = pvpPlayers.sort((a, b) => a.distance - b.distance)[0];
+              console.log('Found PVP player for gun attack:', closestPVPPlayer);
+              if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
+                attackPVPPlayer(closestPVPPlayer.id, 'gun');
+                return;
+              }
             }
           }
         }

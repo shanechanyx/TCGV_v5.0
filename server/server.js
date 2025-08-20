@@ -903,7 +903,7 @@ const handleGunShoot = (socket, data) => {
     // Broadcast updated gun state to player
     socket.emit('gunUpdated', playerGun);
     
-    console.log(`Projectile ${projectile.id} created for player ${playerId} in room ${roomId}`);
+    console.log(`${createdProjectiles.length} projectiles created for player ${playerId} in room ${roomId}`);
   } catch (error) {
     console.error('Error in handleGunShoot:', error);
     socket.emit('gunShootFailed', { reason: 'Server error' });
