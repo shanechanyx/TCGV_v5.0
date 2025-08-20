@@ -166,17 +166,35 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
   const handleUserJoinedVoice = (userData) => {
     const { userId } = userData;
     
+    console.log(`[AUDIO] User ${userId} joined voice chat, creating peer connection`);
+    
     // Don't create a peer connection to ourselves
-    if (userId === currentPlayerId) return;
+    if (userId === currentPlayerId) {
+      console.log(`[AUDIO] Skipping self-connection for ${userId}`);
+      return;
+    }
+    
+    // Check if we already have a peer for this user
+    if (myPeers.current[userId]) {
+      console.log(`[AUDIO] Peer already exists for ${userId}, skipping`);
+      return;
+    }
     
     // Create a new peer connection (initiator=true because we're creating the offer)
     const peer = createPeer(userId, true);
+    if (!peer) {
+      console.error(`[AUDIO] Failed to create peer for ${userId}`);
+      return;
+    }
+    
     myPeers.current[userId] = peer;
     
     setPeers(prev => ({
       ...prev,
       [userId]: peer
     }));
+    
+    console.log(`[AUDIO] Successfully created peer for ${userId}`);
   };
   
   const handleUserLeftVoice = (userData) => {
@@ -225,8 +243,16 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
     
     // Apply the signal to the peer
     try {
-      console.log(`[AUDIO] Applying signal to peer ${userId}`);
+      console.log(`[AUDIO] Applying signal to peer ${userId}, signal type: ${signal.type}`);
+      
+      // Check if peer is still valid
+      if (!myPeers.current[userId] || myPeers.current[userId].destroyed) {
+        console.error(`[AUDIO] Peer ${userId} is destroyed or invalid, cannot apply signal`);
+        return;
+      }
+      
       myPeers.current[userId].signal(signal);
+      console.log(`[AUDIO] Successfully applied signal to peer ${userId}`);
     } catch (err) {
       console.error(`[AUDIO] Error signaling peer ${userId}:`, err);
       
@@ -251,7 +277,10 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
           // Try applying the signal again
           setTimeout(() => {
             try {
-              newPeer.signal(signal);
+              if (newPeer && !newPeer.destroyed) {
+                newPeer.signal(signal);
+                console.log(`[AUDIO] Successfully applied signal after peer recreation for ${userId}`);
+              }
             } catch (retryErr) {
               console.error(`[AUDIO] Failed to apply signal after peer recreation:`, retryErr);
             }
@@ -687,6 +716,8 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
   };
   
   const disableVoiceChat = () => {
+    console.log("[AUDIO] disableVoiceChat called");
+    
     // Notify server we're leaving voice chat
     if (socket && roomId) {
       console.log("Disabling voice chat and leaving voice chat room");
@@ -703,6 +734,30 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
     cleanupVoiceChat();
     setShowModal(false);
   };
+  
+  // Add a function to check if voice chat should be active
+  const shouldVoiceChatBeActive = () => {
+    return isVoiceChatEnabled && audioStream && socket && roomId;
+  };
+  
+  // Add a useEffect to prevent premature cleanup
+  useEffect(() => {
+    if (!shouldVoiceChatBeActive()) {
+      return;
+    }
+    
+    console.log('[AUDIO] Voice chat is active, preventing cleanup');
+    
+    // Only cleanup when component unmounts or voice chat is explicitly disabled
+    return () => {
+      if (isVoiceChatEnabled) {
+        console.log('[AUDIO] Component unmounting but voice chat is still enabled, not cleaning up');
+        return;
+      }
+      console.log('[AUDIO] Cleaning up voice chat due to component unmount');
+      cleanupVoiceChat();
+    };
+  }, [isVoiceChatEnabled, audioStream, socket, roomId]);
   
   const toggleMute = () => {
     setIsMuted(prevMuted => {
@@ -1259,6 +1314,18 @@ const VoiceChat = ({ socket, inRoom, roomId, players, currentPlayerId }) => {
               style={{ width: `${Math.min(audioLevel * 100 * 5, 50)}px` }}
             ></div>
           )}
+          
+          {/* Connection status */}
+          <div className="voice-chat-status" style={{
+            fontSize: '12px',
+            color: Object.keys(myPeers.current).length > 0 ? '#4CAF50' : '#FF9800',
+            marginLeft: '10px'
+          }}>
+            {Object.keys(myPeers.current).length > 0 ? 
+              `Connected (${Object.keys(myPeers.current).length} peers)` : 
+              'Connecting...'
+            }
+          </div>
           
           {/* Debug button */}
           <button 
