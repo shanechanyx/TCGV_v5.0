@@ -158,7 +158,8 @@ function App() {
     { userId: 'beta2', password: 'Password', email: 'beta2@example.com', name: 'Beta Tester 2' },
     { userId: 'guest', password: 'Password', email: 'guest@example.com', name: 'Guest User' },
     { userId: '1', password: '1', email: 'user1@example.com', name: 'User One' },
-    { userId: '2', password: '2', email: 'user2@example.com', name: 'User Two' }
+    { userId: '2', password: '2', email: 'user2@example.com', name: 'User Two' },
+    { userId: '3', password: '3', email: 'user3@example.com', name: 'User Three' }
   ]);
   
   // Valid invite codes
