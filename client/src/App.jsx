@@ -974,8 +974,8 @@ function App() {
         return false;
       }
       
-      // Check if user exists and password matches
-      const user = registeredUsers.find(u => u.userId === userId);
+      // Check if user exists and password matches in invited users
+      const user = getInvitedUserInfo(userId);
       if (!user) {
         setError('Oops! Wrong Login Details!');
         return false;
@@ -1003,15 +1003,17 @@ function App() {
         return false;
       }
       
-      // Check if user already exists
-      const userExists = registeredUsers.find(u => u.userId === userId);
+      // For beta testing, users must already be in the invited list
+      // Check if user already exists in invited users
+      const userExists = getInvitedUserInfo(userId);
       if (userExists) {
         setError('User ID already exists');
         return false;
       }
       
-      // Add the new user to registered users
-      setRegisteredUsers([...registeredUsers, { userId, password, email }]);
+      // In beta testing, we don't allow new signups - users must be pre-invited
+      setError('Access Denied: You are not on the beta testing list');
+      return false;
       setSuccessMessage('Welcome to Chat.io!');
       return true;
     } 
