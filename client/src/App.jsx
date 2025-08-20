@@ -1889,51 +1889,7 @@ function App() {
     }
   };
 
-  const performGKeyShoot = () => {
-    console.log('=== G KEY SHOOT DEBUG ===');
-    console.log('Socket connected:', !!socket);
-    console.log('In room:', inRoom);
-    console.log('Current gun:', playerGun);
-    
-    if (!socket || !inRoom) {
-      console.log('Cannot shoot with G key - not connected or not in room');
-      addCombatMessage('Cannot shoot - not connected!', 'warning');
-      return;
-    }
-    
-    if (!playerGun || !playerGun.hasGun) {
-      console.log('No gun equipped for G key shoot');
-      addCombatMessage('No gun equipped!', 'warning');
-      return;
-    }
-    
-    if (playerGun.ammo <= 0) {
-      console.log('No ammo for G key shoot');
-      addCombatMessage('Out of ammo!', 'warning');
-      return;
-    }
-    
-    try {
-      console.log('G key shooting gun:', playerGun.gunType);
-      
-      // Handle different gun types
-      if (playerGun.gunType === 'machine_gun') {
-        // Start continuous firing for machine gun
-        socket.emit('startMachineGunFiring');
-        // Play initial SMG shot sound
-        audioManager.playSMGShot();
-        addCombatMessage('Started machine gun continuous firing!', 'attack');
-      } else {
-        // Single shot for pistol and shotgun
-        shootGun();
-      }
-      
-      console.log('=== G KEY SHOOT COMPLETE ===');
-    } catch (error) {
-      console.error('Error in G key shoot:', error);
-      addCombatMessage('Error shooting gun!', 'warning');
-    }
-  };
+
 
   const stopMachineGunFiring = () => {
     if (socket && playerGun && playerGun.gunType === 'machine_gun') {
@@ -2282,10 +2238,40 @@ function App() {
         }
       }
       
-      if (e.key === 'g' || e.key === 'G') {
-        // Handle gun shooting
+      if (e.key === ' ') {
+        // Handle Spacebar for attacks
         e.preventDefault();
-        performGKeyShoot();
+        
+        // Check for PVP attacks first (if both players are in PVP mode)
+        if (myPvpStatus && nearbyPlayers.length > 0) {
+          const pvpPlayers = nearbyPlayers.filter(player => pvpStatuses[player.id]);
+          if (pvpPlayers.length > 0) {
+            const closestPVPPlayer = pvpPlayers[0];
+            if (playerInventory.hasSword) {
+              attackPVPPlayer(closestPVPPlayer.id, 'sword');
+              return;
+            } else if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
+              attackPVPPlayer(closestPVPPlayer.id, 'gun');
+              return;
+            }
+          }
+        }
+        
+        // Regular PVE attacks
+        if (playerInventory.hasSword) {
+          performFKeyAttack(); // Sword attack
+        } else if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
+          if (playerGun.gunType === 'machine_gun') {
+            // Start continuous firing for machine gun
+            socket.emit('startMachineGunFiring');
+            audioManager.playSMGShot();
+            addCombatMessage('Started machine gun firing!', 'attack');
+          } else {
+            shootGun(); // Single shot for other guns
+          }
+        } else {
+          addCombatMessage('No weapon equipped!', 'warning');
+        }
       }
       
       if (e.key === 'Escape') {
@@ -2295,8 +2281,8 @@ function App() {
     };
     
     const handleKeyUp = (e) => {
-      // Handle machine gun firing stop
-      if ((e.key === 'g' || e.key === 'G') && playerGun && playerGun.gunType === 'machine_gun') {
+      // Handle machine gun firing stop (now with Spacebar)
+      if (e.key === ' ' && playerGun && playerGun.gunType === 'machine_gun') {
         stopMachineGunFiring();
       }
     };
@@ -3209,7 +3195,7 @@ function App() {
                             <button 
                               className="menu-option pvp-attack"
                               onClick={(e) => handleInteraction('pvpSwordAttack', e)}
-                              title="Sword Attack"
+                              title="Sword Attack (PVP)"
                               style={{ background: '#ff4444', color: 'white' }}
                             >
                               ⚔️
@@ -3219,7 +3205,7 @@ function App() {
                             <button 
                               className="menu-option pvp-attack"
                               onClick={(e) => handleInteraction('pvpGunAttack', e)}
-                              title="Gun Attack"
+                              title="Gun Attack (PVP)"
                               style={{ background: '#ff4444', color: 'white' }}
                             >
                               🔫
@@ -3239,6 +3225,31 @@ function App() {
                     size={80}
                     tintColor={playerSpriteId === 'character1' || playerSpriteId === 'character2' ? (player.bubbleColor || '#4a90e2') : ''}
                   />
+                  
+                  {/* HP Bar */}
+                  <div className="player-hp-bar" style={{
+                    position: 'absolute',
+                    bottom: '-15px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '60px',
+                    height: '6px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    borderRadius: '3px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    zIndex: 10
+                  }}>
+                    <div 
+                      className="hp-fill"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, ((playerStats?.[player.id]?.hp || 100) / (playerStats?.[player.id]?.maxHp || 100)) * 100))}%`,
+                        height: '100%',
+                        background: 'linear-gradient(to right, #ff4444, #ffaa00, #4CAF50)',
+                        borderRadius: '2px',
+                        transition: 'width 0.3s ease'
+                      }}
+                    ></div>
+                  </div>
                   
                   {/* Sword swing animation */}
                   {player.id === socket?.id && isAttacking && (
