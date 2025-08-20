@@ -54,6 +54,14 @@ module.exports = {
           from: 'public/assets',
           to: 'assets',
         },
+        {
+          from: 'public/sprites',
+          to: 'sprites',
+        },
+        {
+          from: 'public/*.avif',
+          to: '[name][ext]',
+        },
       ],
     }),
     new webpack.ProvidePlugin({

@@ -27,7 +27,7 @@ const defaultSpriteConfig = {
     up: 3
   },
   // Default sprite sheet - to be replaced with user's choice
-  defaultSprite: '/sprites/character-default.png'
+  defaultSprite: '/sprites/character1.png' // Updated to use existing sprite
 };
 
 // Helper function to convert hex color to CSS filter values
@@ -145,8 +145,23 @@ const SpriteManager = ({
   // Use the provided sprite sheet or fall back to default
   const spriteSheetUrl = spriteSheet || config.defaultSprite;
   
+  // Debug sprite loading
+  console.log(`[SPRITE] Loading sprite: ${spriteSheetUrl}`);
+  
   // Convert the tintColor to CSS filter if provided
   const filterStyle = tintColor ? hexToFilter(tintColor) : '';
+  
+  // Add error handling for sprite loading
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      console.log(`[SPRITE] Successfully loaded: ${spriteSheetUrl}`);
+    };
+    img.onerror = (e) => {
+      console.error(`[SPRITE] Failed to load: ${spriteSheetUrl}`, e);
+    };
+    img.src = spriteSheetUrl;
+  }, [spriteSheetUrl]);
 
   // Calculate background size based on sprite type
   let backgroundSize = 'auto';
