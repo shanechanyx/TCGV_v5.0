@@ -13,6 +13,8 @@ class AudioManager {
   }
 
   init() {
+    console.log('[AUDIO] Initializing AudioManager...');
+    
     // Preload all sound effects
     this.loadSound('sword_swing', '/assets/sounds/effects/sword_swing.mp3');
     this.loadSound('monster_death', '/assets/sounds/effects/monster_death.mp3');
@@ -24,21 +26,32 @@ class AudioManager {
     this.loadBackgroundMusic('/assets/sounds/music/background_music.mp3');
     
     console.log('[AUDIO] AudioManager initialized');
+    
+    // Log status after a short delay to check if files loaded
+    setTimeout(() => {
+      console.log('[AUDIO] Status after initialization:', this.getStatus());
+    }, 2000);
   }
 
   loadSound(name, path) {
     try {
+      console.log(`[AUDIO] Loading sound: ${name} from ${path}`);
       const audio = new Audio(path);
       audio.preload = 'auto';
       audio.volume = this.sfxVolume;
       
       // Add error handling
       audio.onerror = (e) => {
-        console.error(`[AUDIO] Failed to load sound: ${name}`, e);
+        console.error(`[AUDIO] Failed to load sound: ${name} from ${path}`, e);
+        console.error(`[AUDIO] Error details:`, e.target.error);
       };
       
       audio.oncanplaythrough = () => {
-        console.log(`[AUDIO] Sound loaded: ${name}`);
+        console.log(`[AUDIO] Sound loaded successfully: ${name}`);
+      };
+      
+      audio.onloadstart = () => {
+        console.log(`[AUDIO] Started loading: ${name}`);
       };
       
       this.sounds[name] = audio;
@@ -49,17 +62,23 @@ class AudioManager {
 
   loadBackgroundMusic(path) {
     try {
+      console.log(`[AUDIO] Loading background music from ${path}`);
       this.backgroundMusic = new Audio(path);
       this.backgroundMusic.preload = 'auto';
       this.backgroundMusic.volume = this.musicVolume;
       this.backgroundMusic.loop = true;
       
       this.backgroundMusic.onerror = (e) => {
-        console.error('[AUDIO] Failed to load background music', e);
+        console.error(`[AUDIO] Failed to load background music from ${path}`, e);
+        console.error(`[AUDIO] Error details:`, e.target.error);
       };
       
       this.backgroundMusic.oncanplaythrough = () => {
-        console.log('[AUDIO] Background music loaded');
+        console.log('[AUDIO] Background music loaded successfully');
+      };
+      
+      this.backgroundMusic.onloadstart = () => {
+        console.log('[AUDIO] Started loading background music');
       };
     } catch (error) {
       console.error('[AUDIO] Error loading background music:', error);

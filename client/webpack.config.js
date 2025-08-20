@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
@@ -28,6 +29,10 @@ module.exports = {
         test: /\.(png|svg|jpg|jpeg|gif|avif)$/i,
         type: 'asset/resource',
       },
+      {
+        test: /\.(mp3|wav|ogg|m4a)$/i,
+        type: 'asset/resource',
+      },
     ],
   },
   resolve: {
@@ -42,6 +47,14 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html',
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'public/assets',
+          to: 'assets',
+        },
+      ],
     }),
     new webpack.ProvidePlugin({
       process: 'process/browser',
