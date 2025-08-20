@@ -1914,6 +1914,8 @@ function App() {
   };
   
   const attackPVPPlayer = (targetId, weaponType) => {
+    console.log('attackPVPPlayer called:', { targetId, weaponType, socket: !!socket, inRoom, myPvpStatus, targetPvpStatus: pvpStatuses[targetId] });
+    
     if (!socket || !inRoom) {
       addCombatMessage('Cannot attack - not in a room!', 'warning');
       return;
@@ -1928,6 +1930,8 @@ function App() {
       addCombatMessage('You can only attack players who are also in PVP mode!', 'warning');
       return;
     }
+    
+    console.log('Emitting PVP attack:', { weaponType, targetId });
     
     if (weaponType === 'sword') {
       socket.emit('pvpSwordAttack', { targetId });
@@ -2142,27 +2146,8 @@ function App() {
       }
       
       if (e.key === 'f' || e.key === 'F') {
-        // Check if there are monsters in range for attack first
+        // F key is ONLY for pickup and interaction, NOT for attacks
         const myPosition = playerPositions[socket?.id];
-        if (myPosition && monsters.length > 0) {
-          let closestMonster = null;
-          let closestDistance = Infinity;
-          
-          monsters.forEach(monster => {
-            const distance = calculateDistance(myPosition, monster.position);
-            if (distance <= 60 && distance < closestDistance) {
-              closestDistance = distance;
-              closestMonster = monster;
-            }
-          });
-          
-          // If monster in range, attack instead of player interaction
-          if (closestMonster && !isAttacking) {
-            e.preventDefault();
-            performFKeyAttack();
-            return;
-          }
-        }
         
         // If no monsters in range, check for swords to pickup
         if (myPosition && swords.length > 0) {
@@ -2239,28 +2224,51 @@ function App() {
       }
       
       if (e.key === ' ') {
-        // Handle Spacebar for attacks
+        // Handle Spacebar for SWORD attacks only
         e.preventDefault();
         
-        // Check for PVP attacks first (if both players are in PVP mode)
+        // Check for PVP sword attacks first (if both players are in PVP mode)
         if (myPvpStatus && nearbyPlayers.length > 0) {
           const pvpPlayers = nearbyPlayers.filter(player => pvpStatuses[player.id]);
+          console.log('Spacebar PVP check:', { myPvpStatus, nearbyPlayers: nearbyPlayers.length, pvpPlayers: pvpPlayers.length });
           if (pvpPlayers.length > 0) {
             const closestPVPPlayer = pvpPlayers[0];
+            console.log('Found PVP player for sword attack:', closestPVPPlayer);
             if (playerInventory.hasSword) {
               attackPVPPlayer(closestPVPPlayer.id, 'sword');
               return;
-            } else if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
+            }
+          }
+        }
+        
+        // Regular PVE sword attacks
+        if (playerInventory.hasSword) {
+          performFKeyAttack(); // Sword attack
+        } else {
+          addCombatMessage('No sword equipped!', 'warning');
+        }
+      }
+      
+      if (e.key === 'c' || e.key === 'C') {
+        // Handle C key for GUN attacks only
+        e.preventDefault();
+        
+        // Check for PVP gun attacks first (if both players are in PVP mode)
+        if (myPvpStatus && nearbyPlayers.length > 0) {
+          const pvpPlayers = nearbyPlayers.filter(player => pvpStatuses[player.id]);
+          console.log('C key PVP check:', { myPvpStatus, nearbyPlayers: nearbyPlayers.length, pvpPlayers: pvpPlayers.length });
+          if (pvpPlayers.length > 0) {
+            const closestPVPPlayer = pvpPlayers[0];
+            console.log('Found PVP player for gun attack:', closestPVPPlayer);
+            if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
               attackPVPPlayer(closestPVPPlayer.id, 'gun');
               return;
             }
           }
         }
         
-        // Regular PVE attacks
-        if (playerInventory.hasSword) {
-          performFKeyAttack(); // Sword attack
-        } else if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
+        // Regular PVE gun attacks
+        if (playerGun && playerGun.hasGun && playerGun.ammo > 0) {
           if (playerGun.gunType === 'machine_gun') {
             // Start continuous firing for machine gun
             socket.emit('startMachineGunFiring');
@@ -2270,7 +2278,7 @@ function App() {
             shootGun(); // Single shot for other guns
           }
         } else {
-          addCombatMessage('No weapon equipped!', 'warning');
+          addCombatMessage('No gun equipped or out of ammo!', 'warning');
         }
       }
       
@@ -2281,8 +2289,8 @@ function App() {
     };
     
     const handleKeyUp = (e) => {
-      // Handle machine gun firing stop (now with Spacebar)
-      if (e.key === ' ' && playerGun && playerGun.gunType === 'machine_gun') {
+      // Handle machine gun firing stop (now with C key)
+      if ((e.key === 'c' || e.key === 'C') && playerGun && playerGun.gunType === 'machine_gun') {
         stopMachineGunFiring();
       }
     };
