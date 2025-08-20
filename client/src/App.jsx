@@ -2341,12 +2341,12 @@ function App() {
         });
         break;
       case 'pvpSwordAttack':
-        console.log(`PVP Sword attack on ${selectedPlayer.name}`);
-        attackPVPPlayer(selectedPlayer.id, 'sword');
+        console.log(`PVP Sword attack on ${selectedPlayer.name} - removed from interaction menu`);
+        // PVP attacks are now handled by universal combat system (Spacebar/C keys)
         break;
       case 'pvpGunAttack':
-        console.log(`PVP Gun attack on ${selectedPlayer.name}`);
-        attackPVPPlayer(selectedPlayer.id, 'gun');
+        console.log(`PVP Gun attack on ${selectedPlayer.name} - removed from interaction menu`);
+        // PVP attacks are now handled by universal combat system (Spacebar/C keys)
         break;
       default:
         break;
@@ -3121,30 +3121,7 @@ function App() {
                           </svg>
                         </button>
                         
-                        {/* PVP Attack Options - only show if both players are in PVP mode */}
-                        {myPvpStatus && pvpStatuses[player.id] && (
-                          <>
-                            {/* Sword Attack */}
-                            <button 
-                              className="menu-option pvp-attack"
-                              onClick={(e) => handleInteraction('pvpSwordAttack', e)}
-                              title="Sword Attack (PVP)"
-                              style={{ background: '#ff4444', color: 'white' }}
-                            >
-                              ⚔️
-                            </button>
-                            
-                            {/* Gun Attack */}
-                            <button 
-                              className="menu-option pvp-attack"
-                              onClick={(e) => handleInteraction('pvpGunAttack', e)}
-                              title="Gun Attack (PVP)"
-                              style={{ background: '#ff4444', color: 'white' }}
-                            >
-                              🔫
-                            </button>
-                          </>
-                        )}
+
                       </div>
                     </div>
                   )}
