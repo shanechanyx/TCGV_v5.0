@@ -3453,7 +3453,7 @@ function App() {
                     <div className="monster-hp-text">{monster.hp}/{monster.maxHp} HP</div>
                   </div>
                   
-                  {/* Monster sprite using actual image */}
+                  {/* Monster sprite using actual image - Updated for production */}
                   <div 
                     className="monster-sprite"
                     style={{
