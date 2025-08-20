@@ -12,6 +12,9 @@ const io = require('socket.io')(http, {
 // Serve static files from the React build
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
+// Serve assets specifically to ensure they're accessible
+app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets')));
+
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
