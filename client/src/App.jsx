@@ -1993,7 +1993,18 @@ function App() {
     
     // Check monsters in range
     monsters.forEach(monster => {
-      const distance = calculateDistance(myPosition, monster.position);
+      // Calculate distance from my center to monster center
+      // Player sprites are 80x80 pixels, so center is at position + 40
+      const myCenter = {
+        x: myPosition.x + 40,
+        y: myPosition.y + 40
+      };
+      const monsterCenter = {
+        x: monster.position.x + 40, // Assuming monsters are also 80x80
+        y: monster.position.y + 40
+      };
+      
+      const distance = calculateDistance(myCenter, monsterCenter);
       if (distance <= 80) {
         targets.push({ type: 'monster', id: monster.id, distance });
       }
@@ -2005,8 +2016,20 @@ function App() {
       players.forEach(player => {
         if (player.id !== socket.id && pvpStatuses[player.id]) {
           const theirPosition = playerPositions[player.id] || { x: 0, y: 0 };
-          const distance = calculateDistance(myPosition, theirPosition);
-          console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, position=${JSON.stringify(theirPosition)}`);
+          
+          // Calculate distance from my center to their center
+          // Player sprites are 80x80 pixels, so center is at position + 40
+          const myCenter = {
+            x: myPosition.x + 40,
+            y: myPosition.y + 40
+          };
+          const theirCenter = {
+            x: theirPosition.x + 40,
+            y: theirPosition.y + 40
+          };
+          
+          const distance = calculateDistance(myCenter, theirCenter);
+          console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, myCenter=${JSON.stringify(myCenter)}, theirCenter=${JSON.stringify(theirCenter)}`);
           if (distance <= 200) {
             targets.push({ type: 'player', id: player.id, distance });
             console.log(`Added PVP player ${player.name} to targets`);
@@ -2083,7 +2106,18 @@ function App() {
     
     // Check monsters in range
     monsters.forEach(monster => {
-      const distance = calculateDistance(myPosition, monster.position);
+      // Calculate distance from my center to monster center
+      // Player sprites are 80x80 pixels, so center is at position + 40
+      const myCenter = {
+        x: myPosition.x + 40,
+        y: myPosition.y + 40
+      };
+      const monsterCenter = {
+        x: monster.position.x + 40, // Assuming monsters are also 80x80
+        y: monster.position.y + 40
+      };
+      
+      const distance = calculateDistance(myCenter, monsterCenter);
       if (distance <= 180) {
         targets.push({ type: 'monster', id: monster.id, distance });
       }
@@ -2095,8 +2129,20 @@ function App() {
       players.forEach(player => {
         if (player.id !== socket.id && pvpStatuses[player.id]) {
           const theirPosition = playerPositions[player.id] || { x: 0, y: 0 };
-          const distance = calculateDistance(myPosition, theirPosition);
-          console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, position=${JSON.stringify(theirPosition)}`);
+          
+          // Calculate distance from my center to their center
+          // Player sprites are 80x80 pixels, so center is at position + 40
+          const myCenter = {
+            x: myPosition.x + 40,
+            y: myPosition.y + 40
+          };
+          const theirCenter = {
+            x: theirPosition.x + 40,
+            y: theirPosition.y + 40
+          };
+          
+          const distance = calculateDistance(myCenter, theirCenter);
+          console.log(`Player ${player.name} (${player.id}): PVP=${pvpStatuses[player.id]}, distance=${distance}, myCenter=${JSON.stringify(myCenter)}, theirCenter=${JSON.stringify(theirCenter)}`);
           if (distance <= 300) {
             targets.push({ type: 'player', id: player.id, distance });
             console.log(`Added PVP player ${player.name} to gun targets`);
