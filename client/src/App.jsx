@@ -3938,19 +3938,50 @@ function App() {
       )}
 
       {/* PVP Controls */}
+      {console.log('Rendering PVP controls:', { inRoom, myPvpStatus })}
       {inRoom && (
-        <div className="pvp-controls">
+        <div className="pvp-controls" onClick={(e) => console.log('PVP container clicked!', e)}>
           <div style={{ marginBottom: '5px' }}>
             <button 
               onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 console.log('PVP button clicked!', e);
                 togglePVP();
               }}
+              onMouseDown={(e) => console.log('PVP button mousedown!', e)}
+              onMouseUp={(e) => console.log('PVP button mouseup!', e)}
               style={{
-                background: myPvpStatus ? '#ff4444' : '#4CAF50'
+                background: myPvpStatus ? '#ff4444' : '#4CAF50',
+                position: 'relative',
+                zIndex: 1001
               }}
             >
               {myPvpStatus ? '💀 PVP ON' : '🛡️ PVP OFF'}
+            </button>
+            
+            {/* Test button */}
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('TEST button clicked!', e);
+                alert('Test button works!');
+              }}
+              style={{
+                background: '#007bff',
+                border: 'none',
+                color: 'white',
+                padding: '8px 15px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                marginLeft: '10px',
+                position: 'relative',
+                zIndex: 1001
+              }}
+            >
+              🧪 TEST
             </button>
           </div>
           <div style={{ fontSize: '10px', opacity: 0.8 }}>
