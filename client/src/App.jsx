@@ -1666,6 +1666,10 @@ function App() {
       
       // If it's us, update our position and stats
       if (data.playerId === socket.id) {
+        console.log('=== PLAYER REVIVED (SELF) ===');
+        console.log('New position:', data.newPosition);
+        console.log('New HP:', data.newHp);
+        
         setPlayerPositions(prev => ({
           ...prev,
           [socket.id]: data.newPosition
@@ -1673,14 +1677,30 @@ function App() {
         
         setPlayerStats(prev => ({
           ...prev,
-          hp: data.newHp
+          hp: data.newHp,
+          maxHp: data.newHp // Ensure maxHp is also set
         }));
         
+        // Reset death state
         setIsDead(false);
         setShowRevivalPopup(false);
+        
+        addCombatMessage('You have been revived with full HP!', 'revival');
+      } else {
+        // If someone else was revived, update their stats in our local state
+        console.log('=== PLAYER REVIVED (OTHER) ===');
+        console.log('Player:', data.playerName, 'New HP:', data.newHp);
+        
+        setPlayerStats(prev => ({
+          ...prev,
+          [data.playerId]: {
+            hp: data.newHp,
+            maxHp: data.newHp
+          }
+        }));
+        
+        addCombatMessage(`${data.playerName} has been revived!`, 'revival');
       }
-      
-      addCombatMessage(`${data.playerName} has been revived!`, 'revival');
     });
     
     return () => {
@@ -1995,6 +2015,11 @@ function App() {
       return;
     }
     
+    // Allow sword swinging even when dead (for testing and to prevent getting stuck)
+    if (isDead) {
+      console.log('Player is dead but still allowing sword swing for testing');
+    }
+    
     const myPosition = playerPositions[socket.id];
     if (!myPosition) return;
     
@@ -2119,6 +2144,11 @@ function App() {
   // Universal gun shot that hits everything in range
   const performGunShot = () => {
     if (!socket || !inRoom) return;
+    
+    // Allow gun shooting even when dead (for testing and to prevent getting stuck)
+    if (isDead) {
+      console.log('Player is dead but still allowing gun shot for testing');
+    }
     
     const myPosition = playerPositions[socket.id];
     if (!myPosition) return;
