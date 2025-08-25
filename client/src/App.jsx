@@ -4134,7 +4134,7 @@ function App() {
         </div>
       )}
 
-      {/* PVP Controls - Updated for Production */}
+      {/* PVP Controls - Production Ready v5.0 */}
       {console.log('Rendering PVP controls:', { inRoom, myPvpStatus })}
       {inRoom && (
         <div className="pvp-controls" onClick={(e) => console.log('PVP container clicked!', e)}>
