@@ -2458,12 +2458,11 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Allow attacking dead players (important for revival system)
+    // Prevent attacking dead players
     if (targetStats.hp <= 0) {
-      console.log(`Target ${target.name} is already dead, but allowing attack for revival system`);
-      // Don't apply additional damage, but still process the attack for debugging
-      // socket.emit('error', 'Target is already dead');
-      // return;
+      console.log(`Target ${target.name} is already dead, attack blocked`);
+      socket.emit('error', 'Target is already dead');
+      return;
     }
     
     const damage = PVP_CONFIG.swordDamage;
@@ -2539,12 +2538,11 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Allow attacking dead players (important for revival system)
+    // Prevent attacking dead players
     if (targetStats.hp <= 0) {
-      console.log(`Target ${target.name} is already dead, but allowing gun attack for revival system`);
-      // Don't apply additional damage, but still process the attack for debugging
-      // socket.emit('error', 'Target is already dead');
-      // return;
+      console.log(`Target ${target.name} is already dead, gun attack blocked`);
+      socket.emit('error', 'Target is already dead');
+      return;
     }
     
     const damage = PVP_CONFIG.gunDamage;

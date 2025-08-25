@@ -1639,6 +1639,12 @@ function App() {
             ...targetPlayerStats,
             hp: newHP
           };
+          
+          // Check if other player died
+          if (newHP <= 0) {
+            console.log(`Other player ${data.targetName} died`);
+            addCombatMessage(`${data.targetName} has been killed!`, 'death');
+          }
         }
         return newStats;
       });
@@ -2131,6 +2137,7 @@ function App() {
     console.log('In room:', inRoom);
     console.log('Is dead:', isDead);
     console.log('Show revival popup:', showRevivalPopup);
+    console.log('Current HP:', playerStats.hp);
     
     if (!socket || !inRoom) {
       console.log('Cannot revive: missing socket or not in room');
@@ -2145,6 +2152,13 @@ function App() {
     // Reset death state immediately for better UX
     setIsDead(false);
     setShowRevivalPopup(false);
+    
+    // Also update local HP immediately
+    setPlayerStats(prev => ({
+      ...prev,
+      hp: 100,
+      maxHp: 100
+    }));
     
     addCombatMessage('Revival request sent!', 'revival');
   };
@@ -3369,15 +3383,33 @@ function App() {
                     </div>
                   )}
                   
-                  {/* Character sprite */}
-                  <SpriteManager 
-                    spriteSheet={getSpriteConfigById(playerSpriteId).defaultSprite}
-                    animation={animation}
-                    direction={direction}
-                    config={getSpriteConfigById(playerSpriteId)}
-                    size={80}
-                    tintColor={playerSpriteId === 'character1' || playerSpriteId === 'character2' ? (player.bubbleColor || '#4a90e2') : ''}
-                  />
+                  {/* Character sprite - show coffin if dead */}
+                  {playerStats?.[player.id]?.hp <= 0 ? (
+                    <div 
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '60px',
+                        filter: 'grayscale(100%)',
+                        opacity: 0.7
+                      }}
+                      title="Dead Player"
+                    >
+                      ⚰️
+                    </div>
+                  ) : (
+                    <SpriteManager 
+                      spriteSheet={getSpriteConfigById(playerSpriteId).defaultSprite}
+                      animation={animation}
+                      direction={direction}
+                      config={getSpriteConfigById(playerSpriteId)}
+                      size={80}
+                      tintColor={playerSpriteId === 'character1' || playerSpriteId === 'character2' ? (player.bubbleColor || '#4a90e2') : ''}
+                    />
+                  )}
                   
                   {/* HP Bar */}
                   <div className="player-hp-bar" style={{
@@ -3395,7 +3427,7 @@ function App() {
                     <div 
                       className="hp-fill"
                       style={{
-                        width: `${Math.max(0, Math.min(100, ((playerStats?.[player.id]?.hp || playerStats?.hp || 100) / (playerStats?.[player.id]?.maxHp || playerStats?.maxHp || 100)) * 100))}%`,
+                        width: `${Math.max(0, Math.min(100, ((playerStats?.[player.id]?.hp || 100) / (playerStats?.[player.id]?.maxHp || 100)) * 100))}%`,
                         height: '100%',
                         background: 'linear-gradient(to right, #ff4444, #ffaa00, #4CAF50)',
                         borderRadius: '2px',
