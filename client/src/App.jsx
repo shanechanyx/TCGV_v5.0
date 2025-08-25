@@ -1568,7 +1568,15 @@ function App() {
     });
     
     socket.on('shootError', (message) => {
+      console.log('=== SHOOT ERROR ===');
+      console.log('Shoot error message:', message);
       addCombatMessage(message, 'warning');
+    });
+    
+    socket.on('gunShootFailed', (data) => {
+      console.log('=== GUN SHOOT FAILED ===');
+      console.log('Gun shoot failed data:', data);
+      addCombatMessage(`Gun shoot failed: ${data.reason}`, 'warning');
     });
     
     // PVP System Event Handlers
@@ -2176,16 +2184,21 @@ function App() {
     console.log('Gun shot targets:', targets);
     
     // Attack all targets
+    console.log('=== ATTACKING TARGETS ===');
+    console.log('Number of targets found:', targets.length);
+    
     targets.forEach(target => {
       if (target.type === 'monster') {
-        console.log(`Shooting monster ${target.id}`);
+        console.log(`Shooting monster ${target.id} at distance ${target.distance}`);
         // Use existing gun shooting mechanism for monsters
+        const currentDirection = playerDirections[socket.id] || 'down';
+        console.log('Emitting shootGun with direction:', currentDirection);
         socket.emit('shootGun', { 
           gunType: playerGun.gunType,
-          direction: { x: 0, y: 1 } // Default direction, will be calculated server-side
+          direction: currentDirection
         });
       } else if (target.type === 'player') {
-        console.log(`Shooting PVP player ${target.id}`);
+        console.log(`Shooting PVP player ${target.id} at distance ${target.distance}`);
         console.log('Emitting pvpGunAttack event with targetId:', target.id);
         socket.emit('pvpGunAttack', { targetId: target.id });
         addCombatMessage(`Gun shot hit player!`, 'pvp');
