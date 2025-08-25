@@ -1602,7 +1602,12 @@ function App() {
     });
     
     socket.on('pvpAttack', (data) => {
-      console.log('PVP attack:', data);
+      console.log('=== PVP ATTACK RECEIVED ===');
+      console.log('PVP attack data:', data);
+      console.log('Target ID:', data.targetId);
+      console.log('My socket ID:', socket.id);
+      console.log('Is target me?', data.targetId === socket.id);
+      
       addCombatMessage(`${data.attackerName} attacked ${data.targetName} for ${data.damage} damage!`, 'pvp');
       
       // Update HP for the target player (works for both self and others)
@@ -1610,7 +1615,9 @@ function App() {
         const newStats = { ...prev };
         if (data.targetId === socket.id) {
           // If we are the target, update our HP
-          const newHP = Math.max(0, (newStats.hp || 100) - data.damage);
+          const currentHP = newStats.hp || 100;
+          const newHP = Math.max(0, currentHP - data.damage);
+          console.log(`My HP: ${currentHP} -> ${newHP}`);
           newStats.hp = newHP;
           
           // Check if we died
@@ -1627,6 +1634,7 @@ function App() {
           // This ensures HP bars update for all players
           const targetPlayerStats = newStats[data.targetId] || { hp: 100, maxHp: 100 };
           const newHP = Math.max(0, targetPlayerStats.hp - data.damage);
+          console.log(`Other player ${data.targetName} HP: ${targetPlayerStats.hp} -> ${newHP}`);
           newStats[data.targetId] = {
             ...targetPlayerStats,
             hp: newHP
@@ -4152,6 +4160,39 @@ function App() {
               }}
             >
               🔍 DEBUG PVP
+            </button>
+            <button 
+              className="force-revive-button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('=== FORCE REVIVE ===');
+                if (socket && inRoom) {
+                  socket.emit('playerRevived');
+                  setIsDead(false);
+                  setShowRevivalPopup(false);
+                  setPlayerStats(prev => ({
+                    ...prev,
+                    hp: 100,
+                    maxHp: 100
+                  }));
+                  addCombatMessage('Force revived!', 'revival');
+                }
+              }}
+              style={{
+                background: '#4CAF50',
+                border: 'none',
+                color: 'white',
+                padding: '8px 15px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                marginLeft: '10px',
+                position: 'relative',
+                zIndex: 1001
+              }}
+            >
+              🔄 FORCE REVIVE
             </button>
           </div>
           <div style={{ fontSize: '10px', opacity: 0.8 }}>

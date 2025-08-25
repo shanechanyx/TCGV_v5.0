@@ -2458,6 +2458,14 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Allow attacking dead players (important for revival system)
+    if (targetStats.hp <= 0) {
+      console.log(`Target ${target.name} is already dead, but allowing attack for revival system`);
+      // Don't apply additional damage, but still process the attack for debugging
+      // socket.emit('error', 'Target is already dead');
+      // return;
+    }
+    
     const damage = PVP_CONFIG.swordDamage;
     targetStats.hp = Math.max(0, targetStats.hp - damage);
     
@@ -2529,6 +2537,14 @@ io.on('connection', (socket) => {
     if (!targetStats) {
       socket.emit('error', 'Target has no stats');
       return;
+    }
+    
+    // Allow attacking dead players (important for revival system)
+    if (targetStats.hp <= 0) {
+      console.log(`Target ${target.name} is already dead, but allowing gun attack for revival system`);
+      // Don't apply additional damage, but still process the attack for debugging
+      // socket.emit('error', 'Target is already dead');
+      // return;
     }
     
     const damage = PVP_CONFIG.gunDamage;
